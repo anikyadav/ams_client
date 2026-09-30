@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# Audit Practice — Engagement Management
 
-## Getting Started
+Next.js App Router frontend for the existing NestJS / Prisma backend. This MVP implements Engagement / Job Management for AUDITOR and STAFF roles. Billing, documents, compliance calendars and other practice-management modules are out of scope.
 
-First, run the development server:
+## Run locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Requirements: Node.js 22.12 or later, npm, and a running PostgreSQL database.
+
+The existing apps remain separate:
+- Frontend: `D:/Professional/Audit_SAS/audit_sas_client/audit_sas_client`
+- Backend: `D:/Professional/Audit_SAS/audit_sas_server/backend`
+
+### Backend
+
+From `D:/Professional/Audit_SAS/audit_sas_server`:
+
+```sh
+docker compose up -d postgres
+cd backend
+npm ci
+npm run setup:env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The setup script preserves an existing `.env`. Set `DATABASE_URL` to your intended PostgreSQL database before running migrations. Set `JWT_SECRET` to a random secret of at least 32 characters, `PORT=5000`, `CORS_ORIGIN=http://localhost:3000`, and a development `SEED_PASSWORD` (12 or more characters, at most 72 UTF-8 bytes). `NODE_ENV` defaults to development. Do not put database credentials or the JWT secret in the frontend.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm run db:deploy
+npm run prisma:generate
+npm run db:seed
+npm run start:dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The development seed creates `auditor@example.com`, `staff1@example.com`, and `staff2@example.com`, with the configured initial `SEED_PASSWORD`. Re-seeding preserves existing passwords. API documentation: http://localhost:5000/docs. Database readiness: http://localhost:5000/health/ready.
 
-## Learn More
+### Frontend
 
-To learn more about Next.js, take a look at the following resources:
+From this directory:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```sh
+npm ci
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Copy `.env.example` to `.env.local` if the file does not exist, then set:
 
-## Deploy on Vercel
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```sh
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open http://localhost:3000. `/` opens login; auditors land on `/dashboard`, staff on `/tasks`. There is no public registration. An auditor creates staff accounts from **Staff**.
+
+## Workflows
+
+- **Auditor:** create/edit/delete client names; create staff accounts; view all engagements; create engagements with an existing or quick-added client; edit all engagement fields and status; create/edit/reassign/delete subtasks; change task status; post, edit and delete comments.
+- **Staff:** My work includes primary-staff assignments and engagements with at least one assigned subtask. It shows only the user's tasks; engagement detail shows the full task list and discussion. Staff can change only their own task statuses and post comments on any visible engagement or its subtasks.
+- **Progress:** use the backend's rounded `DONE / total * 100`, zero for no tasks. Mutations refresh both the list and detail.
+- **Comments:** oldest first, with author, timestamp and engagement/subtask scope.
+- **Authentication:** JWT bearer access tokens, restored through `/auth/me`; expiry returns to login. Query caches clear on login/logout. Client and staff queries run only for auditors. The backend remains the authority for role and assignment enforcement.
+- Client deletion with linked engagements is rejected by the API. Engagement deletion cascades to subtasks/comments; subtask deletion removes scoped comments.
+
+## Verification
+
+```sh
+npm run lint
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+Browser tests launch the production frontend on port 3100 and mock the API using the inspected backend contract. They cover role-specific workflows, quick-add client creation, task/comment mutations, progress, nullable date clearing, staff account creation, mobile navigation, session expiry and error recovery. They do not prove live database persistence. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can point to an existing Chromium executable.
+
+The backend has separate real PostgreSQL tests:
+
+```sh
+cd D:/Professional/Audit_SAS/audit_sas_server/backend
+npm run test:integration
+```
+
+These tests create and remove their own randomly named database schema. See [brief alignment](docs/brief-alignment.md) for implementation coverage and verification limits.

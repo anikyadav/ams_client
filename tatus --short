@@ -1,0 +1,14 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/layout.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+ .gitignore        |    3 [32m+[m
+ README.md         |   90 [32m+[m[31m-[m
+ app/globals.css   |  136 [32m+[m[31m-[m
+ app/layout.tsx    |   20 [32m+[m[31m-[m
+ app/page.tsx      |   68 [32m+[m[31m-[m
+ package-lock.json | 3688 [32m++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m---[m
+ package.json      |   20 [32m+[m[31m-[m
+ 7 files changed, 3774 insertions(+), 251 deletions(-)
