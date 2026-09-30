@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.post<LoginResponse>("/auth/login", {
         email,
         password,
-      });
+      }, { timeout: 15_000 });
       window.localStorage.setItem(TOKEN_KEY, response.data.accessToken);
       await queryClient.cancelQueries();
       queryClient.clear();

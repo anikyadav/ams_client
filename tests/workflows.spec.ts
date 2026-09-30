@@ -110,6 +110,7 @@ async function mockApi(page: Page, primaryOnly = false) {
     const respond = (data: unknown, status = 200) =>
       route.fulfill({ status, json: data });
     const nextId = () => `created-${++sequence}`;
+    if (path === "/health/ready") return respond({ status: "ok" });
     if (path === "/auth/login") {
       actor = body.email === staff.email ? staff : auditor;
       return respond({

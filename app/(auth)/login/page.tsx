@@ -1,11 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { ShieldCheckIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { useAuth } from "@/components/providers/auth-provider";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -13,10 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { apiErrorMessage } from "@/lib/api";
 import { loginSchema, type LoginValues } from "@/lib/schemas";
+import { useApiReadiness } from "@/lib/use-api-readiness";
 
 export default function LoginPage() {
   const { user, status, login } = useAuth();
   const [pending, setPending] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
+  const { readiness, retry } = useApiReadiness();
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -25,19 +29,25 @@ export default function LoginPage() {
   if (user) {
     redirect(user.role === "STAFF" ? "/tasks" : "/dashboard");
   }
-  if (status === "loading")
-    return (
-      <p role="status" className="text-center text-sm">
-        Checking your session…
-      </p>
-    );
-
   async function onSubmit(values: LoginValues) {
+    if (readiness !== "ready" || status === "loading" || pending || connectionError) return;
+    setLoginError(null);
     setPending(true);
     try {
       await login(values.email, values.password);
     } catch (error) {
-      toast.error(apiErrorMessage(error));
+      if (
+        axios.isAxiosError(error) &&
+        (!error.response || error.response.status >= 500 || error.response.status === 408)
+      ) {
+        setConnectionError(true);
+      } else {
+        setLoginError(
+          axios.isAxiosError(error) && error.response?.status === 401
+            ? "Invalid email or password. Please try again."
+            : apiErrorMessage(error),
+        );
+      }
     } finally {
       setPending(false);
     }
@@ -67,6 +77,33 @@ export default function LoginPage() {
           </p>
         </CardHeader>
         <CardContent className="px-5 pb-5 pt-2">
+          {readiness === "starting" && (
+            <p role="status" className="mb-4 text-sm text-muted-foreground">
+              Starting the server. This may take about a minute…
+            </p>
+          )}
+          {(readiness === "failed" || connectionError) && (
+            <div className="mb-4 space-y-2">
+              <p role="alert" className="text-sm text-destructive">
+                {connectionError
+                  ? "Connection to the server failed. Please retry before signing in."
+                  : "The server is still unavailable after two minutes. Please try again."}
+              </p>
+              <Button type="button" variant="outline" onClick={() => {
+                setConnectionError(false);
+                setLoginError(null);
+                retry();
+              }}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {readiness === "ready" && status === "loading" && (
+            <p role="status" className="mb-4 text-sm text-muted-foreground">
+              Checking your session…
+            </p>
+          )}
+          {loginError && <p role="alert" className="mb-4 text-sm text-destructive">{loginError}</p>}
           <form
             className="space-y-4"
             onSubmit={form.handleSubmit(onSubmit)}
@@ -92,7 +129,7 @@ export default function LoginPage() {
                 />
               )}
             </FormField>
-            <Button type="submit" className="w-full" disabled={pending}>
+            <Button type="submit" className="w-full" disabled={pending || readiness !== "ready" || status === "loading" || connectionError}>
               {pending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
