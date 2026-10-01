@@ -6,13 +6,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormDialog as Dialog, FormError } from "@/components/shared/form-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -59,6 +60,7 @@ export function SubTaskFormDialog({
   }, [open, task, form]);
   if (user?.role !== "AUDITOR") return null;
   async function onSubmit(values: SubTaskValues) {
+    form.clearErrors("root.server");
     try {
       const payload = { ...values, description: values.description || null,
         dueDate: values.dueDate ? bsToAd(values.dueDate) : null };
@@ -67,11 +69,11 @@ export function SubTaskFormDialog({
       toast.success(task ? "Sub-task updated" : "Sub-task added");
       onOpenChange(false);
     } catch (error) {
-      toast.error(apiErrorMessage(error));
+      form.setError("root.server", { message: apiErrorMessage(error) });
     }
   }
   return (
-    <Dialog
+    <Dialog dirty={form.formState.isDirty} pending={pending}
       open={open}
       onOpenChange={(value) => {
         if (!pending) onOpenChange(value);
@@ -134,15 +136,9 @@ export function SubTaskFormDialog({
               </NativeSelect>}
             </FormField>
           </div>
+          <FormError message={form.formState.errors.root?.server?.message} />
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
+            <DialogClose render={<Button type="button" variant="outline" disabled={pending} />}>Cancel</DialogClose>
             <Button
               type="submit"
               disabled={pending || staff.isLoading || !!staff.error}

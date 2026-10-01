@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { ShieldCheckIcon } from "lucide-react";
+import { Eye, EyeOff, Loader2, ShieldCheckIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,7 @@ import { useApiReadiness } from "@/lib/use-api-readiness";
 
 export default function LoginPage() {
   const { user, status, login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -72,8 +73,9 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="px-5 pb-5 pt-2">
           {readiness === "starting" && elapsed >= 2 && (
-            <div className="mb-4 space-y-1 text-sm text-muted-foreground">
+            <div className="mb-4 space-y-2 rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm text-muted-foreground">
               <p role="status">
+                <Loader2 aria-hidden="true" className="mb-2 size-5 animate-spin text-primary" />
                 The server may be waking up. This usually takes about a minute, sometimes longer.
                 {pending ? " We’ll sign you in automatically. Please keep this page open." : " Please wait."}
               </p>
@@ -118,13 +120,10 @@ export default function LoginPage() {
             </FormField>
             <FormField control={form.control} name="password" label="Password">
               {(field) => (
-                <Input
-                  {...field}
-                  disabled={pending}
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <Input {...field} disabled={pending} type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" className="pr-12" />
+                  <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff /> : <Eye />}</Button>
+                </div>
               )}
             </FormField>
             <Button type="submit" className="w-full" disabled={pending || readiness !== "ready" || status === "loading"}>
@@ -134,9 +133,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      <p className="text-center text-xs text-muted-foreground">
-        Seed accounts: auditor@example.com or staff1@example.com
-      </p>
+      {process.env.NODE_ENV === "development" && <p className="text-center text-xs text-muted-foreground">Development accounts: auditor@example.com or staff1@example.com</p>}
     </div>
   );
 }

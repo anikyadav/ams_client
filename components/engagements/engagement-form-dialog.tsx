@@ -8,13 +8,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormDialog as Dialog, FormError } from "@/components/shared/form-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -86,7 +87,7 @@ export function EngagementFormDialog({
   }, [open, engagement, defaultClientId, form]);
   if (!engagement && !fiscalYear.startDate)
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog dirty={form.formState.isDirty} pending={pending} open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select a fiscal year</DialogTitle>
@@ -106,18 +107,19 @@ export function EngagementFormDialog({
       targetDate: values.targetDate ? bsToAd(values.targetDate) : null,
       priority: values.priority || null,
     };
+    form.clearErrors("root.server");
     try {
       if (engagement) await update.mutateAsync({ id: engagement.id, payload });
       else await create.mutateAsync(payload);
       toast.success(engagement ? "Engagement updated" : "Engagement created");
       onOpenChange(false);
     } catch (error) {
-      toast.error(apiErrorMessage(error));
+      form.setError("root.server", { message: apiErrorMessage(error) });
     }
   }
   return (
     <>
-      <Dialog
+      <Dialog dirty={form.formState.isDirty} pending={pending}
         open={open}
         onOpenChange={(value) => {
           if (!pending) onOpenChange(value);
@@ -145,6 +147,7 @@ export function EngagementFormDialog({
             onSubmit={form.handleSubmit(onSubmit)}
             noValidate
           >
+            <p className="text-sm font-semibold">Client and assignment</p>
             <FormField control={form.control} name="clientId" label="Client">
               {(field) => (
                 <NativeSelect {...field}>
@@ -190,6 +193,7 @@ export function EngagementFormDialog({
             >
               {(field) => <Textarea {...field} rows={3} />}
             </FormField>
+            <div className="border-t pt-4"><p className="text-sm font-semibold">Schedule and progress</p><p className="mt-1 text-xs text-muted-foreground">Enter dates in BS using YYYY-MM-DD.</p></div>
             <FormField control={form.control} name="status" label="Status">
               {(field) => (
                 <NativeSelect {...field}>
@@ -236,15 +240,9 @@ export function EngagementFormDialog({
             >
               {(field) => <Input {...field} placeholder="e.g. High" />}
             </FormField>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
+            <FormError message={form.formState.errors.root?.server?.message} />
+          <DialogFooter>
+              <DialogClose render={<Button type="button" variant="outline" disabled={pending} />}>Cancel</DialogClose>
               <Button
                 type="submit"
                 disabled={

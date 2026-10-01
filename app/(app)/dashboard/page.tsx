@@ -98,17 +98,6 @@ export default function DashboardPage() {
       <QueryState loading={loading} error={error} retry={refresh} />
       {!loading && !error && summary && (
         <>
-          {!auditor && <Card>
-            <CardHeader><CardTitle>My assigned engagements</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {summary.list.filter((item) => item.staffId === user?.id).map((item) => <article key={item.id} className="space-y-3">
-                <Link href={`/engagements/${item.id}`} className="font-medium underline">{item.client.name} - {item.natureOfWork}</Link>
-                <EngagementStatusBadge status={item.status} />
-                <EngagementProgressControl engagement={item} />
-              </article>)}
-              {!summary.list.some((item) => item.staffId === user?.id) && <p className="text-sm text-muted-foreground">Your assigned sub-tasks appear below.</p>}
-            </CardContent>
-          </Card>}
           <section
             aria-label="Fiscal year overview"
             className="grid grid-cols-2 gap-4 xl:grid-cols-4"
@@ -157,14 +146,14 @@ export default function DashboardPage() {
                   {metric.href ? (
                     <Link
                       href={metric.href}
-                      className="text-sm underline underline-offset-4"
+                      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                     >
                       View {metric.title.toLowerCase()}
                     </Link>
                   ) : (
                     <button
                       onClick={() => setFilter(metric.filter!)}
-                      className="text-sm underline underline-offset-4"
+                      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                     >
                       View {metric.title.toLowerCase()}
                     </button>
@@ -173,74 +162,13 @@ export default function DashboardPage() {
               </Card>
             ))}
           </section>
-          <div className="grid items-start gap-6 xl:grid-cols-[2fr_1fr]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Engagement stages</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Select a stage to see its engagements below.
-                </p>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {stages.map((stage) => (
-                  <button
-                    key={stage}
-                    aria-pressed={filter === stage}
-                    onClick={() => setFilter(stage)}
-                    className={`space-y-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring ${filter === stage ? "border-primary bg-muted" : ""}`}
-                  >
-                    <p className="text-xs font-medium">
-                      {engagementStatusLabel[stage]}
-                    </p>
-                    <p className="text-2xl font-semibold tabular-nums">
-                      {summary.byStage[stage]}
-                    </p>
-                    <Progress
-                      value={
-                        summary.list.length
-                          ? (summary.byStage[stage] / summary.list.length) * 100
-                          : 0
-                      }
-                      aria-label={`${engagementStatusLabel[stage]} share`}
-                    />
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-            <Card aria-label="Task progress summary">
-              <CardHeader>
-                <CardTitle>
-                  {auditor ? "Task progress" : "My task progress"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-3xl font-semibold tabular-nums">
-                  {summary.taskCount
-                    ? `${summary.taskProgress}%`
-                    : "No tasks yet"}
-                </p>
-                <Progress
-                  value={summary.taskProgress}
-                  aria-label="Tasks completed"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {summary.byTask.DONE} of {summary.taskCount} tasks done
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>{summary.byTask.TODO} to do</span>
-                  <span>{summary.byTask.IN_PROGRESS} in progress</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          <DashboardTasks key={year.id} engagements={summary.list} />
           <Card>
             <CardHeader className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle>Work to track</CardTitle>
+                <CardTitle>Needs attention</CardTitle>
                 <Link
                   href="/engagements"
-                  className="text-sm underline underline-offset-4"
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                 >
                   View all engagements
                 </Link>
@@ -342,6 +270,79 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+          <div className="grid items-start gap-6 xl:grid-cols-[2fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Engagement stages</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Select a stage to filter the attention list above.
+                </p>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {stages.map((stage) => (
+                  <button
+                    key={stage}
+                    aria-pressed={filter === stage}
+                    onClick={() => setFilter(stage)}
+                    className={`space-y-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring ${filter === stage ? "border-primary bg-muted" : ""}`}
+                  >
+                    <p className="text-xs font-medium">
+                      {engagementStatusLabel[stage]}
+                    </p>
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {summary.byStage[stage]}
+                    </p>
+                    <Progress
+                      value={
+                        summary.list.length
+                          ? (summary.byStage[stage] / summary.list.length) * 100
+                          : 0
+                      }
+                      aria-label={`${engagementStatusLabel[stage]} share`}
+                    />
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+            <Card aria-label="Task progress summary">
+              <CardHeader>
+                <CardTitle>
+                  {auditor ? "Task progress" : "My task progress"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-3xl font-semibold tabular-nums">
+                  {summary.taskCount
+                    ? `${summary.taskProgress}%`
+                    : "No tasks yet"}
+                </p>
+                <Progress
+                  value={summary.taskProgress}
+                  aria-label="Tasks completed"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {summary.byTask.DONE} of {summary.taskCount} tasks done
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>{summary.byTask.TODO} to do</span>
+                  <span>{summary.byTask.IN_PROGRESS} in progress</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          {!auditor && <Card>
+            <CardHeader><CardTitle>My assigned engagements</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {summary.list.filter((item) => item.staffId === user?.id).map((item) => <article key={item.id} className="space-y-3">
+                <Link href={`/engagements/${item.id}`} className="font-medium underline">{item.client.name} - {item.natureOfWork}</Link>
+                <EngagementStatusBadge status={item.status} />
+                <EngagementProgressControl engagement={item} />
+              </article>)}
+              {!summary.list.some((item) => item.staffId === user?.id) && <p className="text-sm text-muted-foreground">Your assigned sub-tasks appear below.</p>}
+            </CardContent>
+          </Card>}
+          <DashboardTasks key={year.id} engagements={summary.list} />
+
         </>
       )}
       {auditor && (

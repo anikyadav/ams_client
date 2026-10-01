@@ -1,18 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormDialog as Dialog, FormError } from "@/components/shared/form-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useCreateStaff } from "@/lib/hooks";
@@ -37,8 +38,11 @@ export function StaffFormDialog({
     defaultValues: { name: "", email: "", password: "" },
   });
 
+  useEffect(() => { if (open) form.reset(); }, [open, form]);
+
   async function onSubmit(values: CreateStaffValues) {
     setPending(true);
+    form.clearErrors("root.server");
     try {
       await create.mutateAsync({
         name: values.name,
@@ -49,14 +53,14 @@ export function StaffFormDialog({
       onOpenChange(false);
       form.reset();
     } catch (error) {
-      toast.error(apiErrorMessage(error));
+      form.setError("root.server", { message: apiErrorMessage(error) });
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog dirty={form.formState.isDirty} pending={pending} open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add staff member</DialogTitle>
@@ -94,14 +98,9 @@ export function StaffFormDialog({
               />
             )}
           </FormField>
+          <FormError message={form.formState.errors.root?.server?.message} />
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
+            <DialogClose render={<Button type="button" variant="outline" disabled={pending} />}>Cancel</DialogClose>
             <Button type="submit" disabled={pending}>
               {pending ? "Saving…" : "Add staff"}
             </Button>

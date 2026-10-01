@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Building2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { EmptyState } from "@/components/shared/page-header";
 import { useState } from "react";
 import { redirect } from "next/navigation";
 import { toast } from "sonner";
@@ -27,6 +31,9 @@ export default function ClientsPage() {
   const { user } = useAuth();
   const clients = useClients();
   const remove = useDeleteClient();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("asc");
+  const visible = (clients.data ?? []).filter((client) => `${client.name} ${client.pan ?? ""}`.toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => sort === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Client>();
   const [deleting, setDeleting] = useState<Client>();
@@ -47,6 +54,11 @@ export default function ClientsPage() {
           </Button>
         }
       />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9 bg-card" aria-label="Search clients" placeholder="Search by client name or PAN" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+        <NativeSelect className="sm:w-48" aria-label="Sort clients" value={sort} onChange={(event) => setSort(event.target.value)}><option value="asc">Name: A to Z</option><option value="desc">Name: Z to A</option></NativeSelect>
+      </div>
+      {!clients.isLoading && !clients.error && <p role="status" className="text-sm text-muted-foreground">{visible.length} of {clients.data?.length ?? 0} clients</p>}
       <Card>
         <CardContent>
           <QueryState
@@ -57,7 +69,13 @@ export default function ClientsPage() {
           {!clients.isLoading &&
             !clients.error &&
             (clients.data?.length ? (
-              <Table>
+              <>
+              <div className="space-y-3 md:hidden">{visible.map((client) => <article key={client.id} className="rounded-xl border p-4">
+                <Link href={`/clients/${client.id}`} className="font-semibold text-primary">{client.name}</Link>
+                <dl className="mt-3 space-y-2 text-sm"><div><dt className="text-xs text-muted-foreground">PAN</dt><dd>{client.pan || "Not provided"}</dd></div><div><dt className="text-xs text-muted-foreground">Address</dt><dd className="break-words">{client.location || "Not provided"}</dd></div></dl>
+                <div className="mt-4 flex gap-2"><Button variant="outline" onClick={() => { setEditing(client); setFormOpen(true); }}>Edit</Button><Button variant="ghost" className="text-destructive" onClick={() => setDeleting(client)}>Delete</Button></div>
+              </article>)}</div>
+              <div className="hidden md:block"><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -68,7 +86,7 @@ export default function ClientsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clients.data.map((client) => (
+                  {visible.map((client) => (
                     <TableRow key={client.id}>
                       <TableCell>
                         <Link
@@ -103,11 +121,11 @@ export default function ClientsPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </Table></div>
+              {!visible.length && <EmptyState icon={Search} title="No matching clients" description="Try another name or PAN, or clear your search." action={<Button variant="outline" onClick={() => setSearch("")}>Clear search</Button>} />}
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No clients yet. Add a client to create an engagement.
-              </p>
+              <EmptyState icon={Building2} title="No clients yet" description="Add your first client to start organizing their audit work." action={<Button onClick={() => { setEditing(undefined); setFormOpen(true); }}>Add your first client</Button>} />
             ))}
         </CardContent>
       </Card>

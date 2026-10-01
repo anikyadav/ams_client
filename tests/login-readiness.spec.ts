@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 const health = "**/health/ready?*";
 
@@ -108,4 +108,19 @@ test("persistent login failures stop at the deadline and Retry resubmits", async
   expect(logins).toBe(stopped);
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect.poll(() => logins).toBe(stopped + 1);
+});
+
+
+test("login supports password visibility and hides development account hints", async ({ page }) => {
+  await page.route(health, (route) => route.fulfill({ json: { status: "ok" } }));
+  await page.goto("/login");
+  const password = page.getByLabel("Password", { exact: true });
+  await password.fill("private-password");
+  await page.getByRole("button", { name: "Show password", exact: true }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Hide password", exact: true }).click();
+  await expect(password).toHaveAttribute("type", "password");
+  await expect(password).toHaveValue("private-password");
+  await expect(page.getByText(/Development accounts|Seed accounts/)).toHaveCount(0);
+  await page.screenshot({ path: "test-results/design-login.png", fullPage: true });
 });

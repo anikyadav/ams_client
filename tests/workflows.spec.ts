@@ -424,9 +424,8 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
     path: "test-results/auditor-detail.png",
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "Edit sub-task", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Actions for Audit checks", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Edit sub-task", exact: true }).click();
   await page.getByLabel("Title", { exact: true }).fill("Revised checks");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(
@@ -452,9 +451,8 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
   await expect(page.getByText("Updated comment", { exact: true })).toHaveCount(
     0,
   );
-  await page
-    .getByRole("button", { name: "Delete sub-task", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Actions for Revised checks", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete sub-task", exact: true }).click();
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Delete", exact: true })
@@ -1011,6 +1009,7 @@ test("client details validate PAN, persist on edit and can be cleared", async ({
   await expect(dialog).toHaveCount(0);
   expect(calls.filter((call) => call.method === "POST" && call.path === "/clients").at(-1)?.body).toEqual({ name: "Detailed client", pan: "012345678", location: "Kathmandu, Nepal", fileLocation: "Cabinet A / Shelf 2" });
   await page.getByRole("link", { name: "Detailed client", exact: true }).click();
+  await expect(page).toHaveURL(/\/clients\/[^/]+$/);
   await expect(page.getByText("012345678", { exact: true })).toBeVisible();
   await expect(page.getByText("Kathmandu, Nepal", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Edit client", exact: true }).click();
@@ -1042,4 +1041,59 @@ test("auditors cannot edit staff comments in engagement or task discussions", as
   await page.getByLabel("Edit comment", { exact: true }).fill("Corrected by its author");
   await page.getByRole("button", { name: "Save comment", exact: true }).click();
   await expect(page.getByText("Corrected by its author", { exact: true })).toBeVisible();
+});
+
+test("client search, mobile layouts and unsaved forms remain usable", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.screenshot({ path: "test-results/design-dashboard.png", fullPage: true });
+  await page.getByRole("link", { name: "Clients", exact: true }).click();
+  await page.getByRole("button", { name: "Add client", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Unsaved client");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("Discard unsaved changes?");
+  await page.getByRole("button", { name: "Keep editing" }).click();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Unsaved client");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Discard changes" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: "Add client", exact: true }).click();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("");
+  await page.getByLabel("Name", { exact: true }).fill("Zebra Company");
+  await page.getByLabel("PAN (9 digits, optional)").fill("123456789");
+  await page.getByRole("button", { name: "Create client", exact: true }).click();
+  await page.getByRole("textbox", { name: "Search clients" }).fill("123456789");
+  await expect(page.getByRole("row").filter({ hasText: "Zebra Company" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Example Client" })).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Search clients" }).fill("no matches");
+  await expect(page.getByText("No matching clients", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await page.getByLabel("Sort clients").selectOption("desc");
+  await expect(page.getByRole("row").nth(1)).toContainText("Zebra Company");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("article").filter({ hasText: "Zebra Company" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: "test-results/design-mobile-clients.png", fullPage: true });
+  await page.goto("/engagements");
+  await expect(page.getByRole("article").filter({ hasText: "Annual audit" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: "test-results/design-mobile-engagements.png", fullPage: true });
+  await page.getByRole("button", { name: "Toggle theme" }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.screenshot({ path: "test-results/design-mobile-dark.png", fullPage: true });
+});
+
+test("form failure stays visible and retains entered values", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.getByRole("link", { name: "Clients", exact: true }).click();
+  await page.route("http://localhost:5000/clients", (route) => route.request().method() === "POST"
+    ? route.fulfill({ status: 503, json: { message: "Please try again shortly" } })
+    : route.fallback());
+  await page.getByRole("button", { name: "Add client", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Retained client");
+  await page.getByRole("button", { name: "Create client", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("Please try again shortly");
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Retained client");
+  await page.screenshot({ path: "test-results/design-form-error.png", fullPage: true });
 });

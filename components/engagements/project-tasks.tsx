@@ -6,7 +6,6 @@ import {
   CheckCheck,
   ChevronRight,
   Circle,
-  GitBranch,
   LayoutList,
   Columns3,
   GanttChart,
@@ -14,7 +13,11 @@ import {
   Flag,
   Pencil,
   Trash2,
+  MoreHorizontal,
+  GitBranch,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Deadline } from "@/components/shared/deadline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -40,7 +43,7 @@ const stages: { status: SubTaskStatus; label: string; color: string }[] = [
 ];
 const priorityColors = {
   LOW: "text-slate-500",
-  MEDIUM: "text-blue-600 dark:text-blue-400",
+  MEDIUM: "text-primary",
   HIGH: "text-orange-600 dark:text-orange-400",
   URGENT: "text-rose-600 dark:text-rose-400",
 };
@@ -84,7 +87,6 @@ export function ProjectTasks({
   ).length;
 
   function taskCard(task: SubTask, list = false) {
-    const overdue = isOverdue(task.dueDate, task.status === "DONE");
     return (
       <article
         id={`subtask-${task.id}`}
@@ -93,11 +95,7 @@ export function ProjectTasks({
         className={`group scroll-mt-6 rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md ${list ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px_240px]" : "space-y-4"}`}
       >
         <div className="min-w-0 space-y-2">
-          <div className="flex items-center justify-between gap-2 text-[11px] font-medium">
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <GitBranch className="size-3.5" />
-              SUB-TASK
-            </span>
+          <div className="flex items-center justify-between gap-2 text-xs font-medium">
             <span
               className={`flex items-center gap-1 ${priorityColors[task.priority ?? "MEDIUM"]}`}
             >
@@ -107,23 +105,12 @@ export function ProjectTasks({
           </div>
           <h3 className="break-words text-sm font-semibold leading-6">
             <button
-              className="text-left hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-500"
+              className="text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
               onClick={() => setSelected(task.id)}
             >
               {task.title}
             </button>
           </h3>
-          {task.description && (
-            <p className="line-clamp-2 break-words text-xs leading-5 text-muted-foreground">
-              {task.description}
-            </p>
-          )}
-          <p
-            className="truncate text-[11px] text-muted-foreground"
-            title={engagement.natureOfWork}
-          >
-            ↳ {engagement.natureOfWork}
-          </p>
         </div>
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -131,13 +118,7 @@ export function ProjectTasks({
               <UserAvatar name={task.assignedTo.name} />
               <span>{task.assignedTo.name}</span>
             </span>
-            <span
-              className={`flex items-center gap-1 ${overdue ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              <CalendarDays className="size-3.5" />
-              {task.dueDate ? formatDate(task.dueDate) : "No due date"}
-              {overdue ? " · Overdue" : ""}
-            </span>
+            <Deadline date={task.dueDate} complete={task.status === "DONE"} />
           </div>
           <SubTaskStatusControl task={task} />
         </div>
@@ -148,33 +129,20 @@ export function ProjectTasks({
               value={task.progress}
               aria-label={`Progress for ${task.title}`}
             />
-            <span className="text-[11px] tabular-nums text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {task.progress}%
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-1 border-t pt-3">
             <TaskDiscussion engagement={engagement} task={task} />
             {auditor && (
-              <>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Edit sub-task"
-                  title="Edit sub-task"
-                  onClick={() => onEdit(task)}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Delete sub-task"
-                  title="Delete sub-task"
-                  onClick={() => onDelete(task.id)}
-                >
-                  <Trash2 />
-                </Button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={`Actions for ${task.title}`} />}><MoreHorizontal /></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(task)}><Pencil />Edit sub-task</DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(task.id)}><Trash2 />Delete sub-task</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
@@ -199,7 +167,7 @@ export function ProjectTasks({
               key={id}
               aria-pressed={view === id}
               onClick={() => setView(id)}
-              className={`flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-medium transition-colors ${view === id ? "border-blue-600 text-blue-600 dark:text-blue-400" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-medium transition-colors ${view === id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               <Icon className="size-4" />
               {label}
@@ -266,12 +234,12 @@ export function ProjectTasks({
           </Button>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 dark:border-blue-900 dark:bg-blue-950/30">
-        <span className="rounded-md bg-blue-600 p-2 text-white">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+        <span className="rounded-md bg-primary p-2 text-primary-foreground">
           <GitBranch className="size-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold tracking-widest text-blue-600 dark:text-blue-400">
+          <p className="text-[10px] font-semibold tracking-widest text-primary">
             PARENT ENGAGEMENT
           </p>
           <p className="break-words text-sm font-semibold">
@@ -498,7 +466,7 @@ function ProjectTimeline({
                   </span>
                 </div>
               ) : (
-                <span className="absolute inset-y-0 left-3 flex items-center text-[11px] text-muted-foreground">
+                <span className="absolute inset-y-0 left-3 flex items-center text-xs text-muted-foreground">
                   {engagement.targetDate
                     ? `Target: ${formatDate(engagement.targetDate)}`
                     : "Set start and target dates"}
@@ -537,7 +505,7 @@ function ProjectTimeline({
                     style={{ left: `${position(task.dueDate)}%` }}
                   />
                 ) : (
-                  <span className="absolute inset-y-0 left-3 flex items-center text-[11px] text-muted-foreground">
+                  <span className="absolute inset-y-0 left-3 flex items-center text-xs text-muted-foreground">
                     Unscheduled · No due date
                   </span>
                 )}

@@ -33,7 +33,7 @@ export function useFiscalYear() {
   return year;
 }
 
-export function FiscalYearProvider({ children }: { children: ReactNode }) {
+export function FiscalYearProvider({ children, renderControls }: { children: ReactNode; renderControls?: (controls: ReactNode) => ReactNode }) {
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -94,10 +94,9 @@ export function FiscalYearProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return (
-    <>
-      <div className="mb-6 flex flex-wrap items-center gap-3 border-b pb-4">
-        <label htmlFor="fiscal-year" className="font-medium">
+  const controls = (
+<div className="flex flex-wrap items-center gap-2 pb-3 text-sm">
+        <label htmlFor="fiscal-year" className="font-medium text-muted-foreground">
           Fiscal year (BS)
         </label>
         <NativeSelect
@@ -137,11 +136,16 @@ export function FiscalYearProvider({ children }: { children: ReactNode }) {
           </Button>
         )}
         {selected?.startDate && (
-          <span className="text-sm text-muted-foreground">
+          <span className="hidden text-xs text-muted-foreground xl:inline">
             1 Shrawan – end of Ashadh · All dates in BS
           </span>
         )}
       </div>
+  );
+
+  return (
+    <>
+      {renderControls ? renderControls(controls) : controls}
       {years.error && (
         <p role="alert">
           {apiErrorMessage(years.error)}{" "}

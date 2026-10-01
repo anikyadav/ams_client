@@ -6,9 +6,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2Icon } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
-import { MobileNav } from "@/components/layout/mobile-nav";
 import { DesktopSidebar } from "@/components/layout/sidebar";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { WorkspaceHeader } from "@/components/layout/workspace-header";
 
 function RedirectToLogin() {
   const router = useRouter();
@@ -35,17 +34,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:p-3 focus:text-primary-foreground">Skip to content</a>
       <DesktopSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b px-4">
-          <MobileNav />
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
-        </header>
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <FiscalYearProvider>{children}</FiscalYearProvider>
-        </main>
+        <FiscalYearProvider renderControls={(controls) => <WorkspaceHeader controls={controls} />}>
+          <main id="main-content" className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            {children}
+          </main>
+        </FiscalYearProvider>
       </div>
     </div>
   );

@@ -24,10 +24,11 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
         active
-          ? "bg-accent text-accent-foreground"
+          ? "bg-primary/10 text-primary shadow-[inset_3px_0_0_var(--primary)]"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
       )}
     >
@@ -94,7 +95,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 export function DesktopSidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 border-r bg-background md:block">
+    <aside className="hidden w-64 shrink-0 border-r bg-card md:block">
       <div className="sticky top-0 h-screen">
         <SidebarNav />
       </div>

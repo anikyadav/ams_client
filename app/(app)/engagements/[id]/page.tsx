@@ -95,7 +95,7 @@ export default function EngagementDetailPage() {
       <header className="space-y-6 rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="flex min-w-0 flex-1 items-start gap-4">
-            <div className="rounded-xl bg-blue-600 p-3 text-white shadow-sm">
+            <div className="rounded-xl bg-primary p-3 text-primary-foreground shadow-sm">
               <BriefcaseBusiness className="size-6" />
             </div>
             <div className="min-w-0 space-y-2">
@@ -134,7 +134,7 @@ export default function EngagementDetailPage() {
                   Project settings
                 </Button>
                 <Button
-                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={addTask}
                 >
                   <Plus />
@@ -189,7 +189,7 @@ export default function EngagementDetailPage() {
               </span>
             </div>
             <Progress
-              className="h-2 [&_[data-slot=progress-indicator]]:bg-blue-600"
+              className="h-2 [&_[data-slot=progress-indicator]]:bg-primary"
               value={data.progress}
               aria-label="Engagement progress"
             />

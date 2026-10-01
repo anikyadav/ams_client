@@ -7,13 +7,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormDialog as Dialog, FormError } from "@/components/shared/form-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,6 +50,7 @@ export function ClientFormDialog({
   async function onSubmit(values: ClientValues) {
     setPending(true);
     const payload = { name: values.name, pan: values.pan || null, location: values.location || null, fileLocation: values.fileLocation || null };
+    form.clearErrors("root.server");
     try {
       if (client) {
         await update.mutateAsync({ id: client.id, ...payload });
@@ -60,7 +62,7 @@ export function ClientFormDialog({
       }
       onOpenChange(false);
     } catch (error) {
-      toast.error(apiErrorMessage(error));
+      form.setError("root.server", { message: apiErrorMessage(error) });
     } finally {
       setPending(false);
     }
@@ -68,7 +70,7 @@ export function ClientFormDialog({
 
   if (!client && !fiscalYear.startDate)
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog dirty={form.formState.isDirty} pending={pending} open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select a fiscal year</DialogTitle>
@@ -81,7 +83,7 @@ export function ClientFormDialog({
       </Dialog>
     );
   return (
-    <Dialog open={open} onOpenChange={(value) => { if (!pending) onOpenChange(value); }}>
+    <Dialog dirty={form.formState.isDirty} pending={pending} open={open} onOpenChange={(value) => { if (!pending) onOpenChange(value); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{client ? "Edit client" : "New client"}</DialogTitle>
@@ -105,6 +107,7 @@ export function ClientFormDialog({
               />
             )}
           </FormField>
+          <div className="border-t pt-4 text-sm font-semibold">Additional details</div>
           <FormField control={form.control} name="pan" label="PAN (9 digits, optional)">
             {(field) => <Input {...field} inputMode="numeric" maxLength={9} placeholder="e.g. 012345678" />}
           </FormField>
@@ -114,15 +117,9 @@ export function ClientFormDialog({
           <FormField control={form.control} name="fileLocation" label="File location (optional)">
             {(field) => <Input {...field} maxLength={1000} placeholder="e.g. Cabinet A / Shelf 2 or shared folder path" />}
           </FormField>
+          <FormError message={form.formState.errors.root?.server?.message} />
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
+            <DialogClose render={<Button type="button" variant="outline" disabled={pending} />}>Cancel</DialogClose>
             <Button type="submit" disabled={pending}>
               {pending ? "Saving…" : client ? "Save changes" : "Create client"}
             </Button>
