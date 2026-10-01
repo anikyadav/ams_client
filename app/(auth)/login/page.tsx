@@ -19,8 +19,8 @@ export default function LoginPage() {
   const { user, status, login } = useAuth();
   const [pending, setPending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [connectionError, setConnectionError] = useState(false);
-  const { readiness, retry } = useApiReadiness();
+  const [submitted, setSubmitted] = useState(false);
+  const { readiness, elapsed, run } = useApiReadiness();
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -30,24 +30,18 @@ export default function LoginPage() {
     redirect(user.role === "STAFF" ? "/tasks" : "/dashboard");
   }
   async function onSubmit(values: LoginValues) {
-    if (readiness !== "ready" || status === "loading" || pending || connectionError) return;
+    if (status === "loading" || pending) return;
     setLoginError(null);
+    setSubmitted(true);
     setPending(true);
     try {
-      await login(values.email, values.password);
+      await run((signal) => login(values.email, values.password, signal));
     } catch (error) {
-      if (
-        axios.isAxiosError(error) &&
-        (!error.response || error.response.status >= 500 || error.response.status === 408)
-      ) {
-        setConnectionError(true);
-      } else {
         setLoginError(
           axios.isAxiosError(error) && error.response?.status === 401
             ? "Invalid email or password. Please try again."
             : apiErrorMessage(error),
         );
-      }
     } finally {
       setPending(false);
     }
@@ -77,22 +71,24 @@ export default function LoginPage() {
           </p>
         </CardHeader>
         <CardContent className="px-5 pb-5 pt-2">
-          {readiness === "starting" && (
-            <p role="status" className="mb-4 text-sm text-muted-foreground">
-              Starting the server. This may take about a minute…
-            </p>
+          {readiness === "starting" && elapsed >= 2 && (
+            <div className="mb-4 space-y-1 text-sm text-muted-foreground">
+              <p role="status">
+                The server may be waking up. This usually takes about a minute, sometimes longer.
+                {pending ? " We’ll sign you in automatically. Please keep this page open." : " Please wait."}
+              </p>
+              <p>Time elapsed: {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}</p>
+            </div>
           )}
-          {(readiness === "failed" || connectionError) && (
+          {readiness === "failed" && (
             <div className="mb-4 space-y-2">
               <p role="alert" className="text-sm text-destructive">
-                {connectionError
-                  ? "Connection to the server failed. Please retry before signing in."
-                  : "The server is still unavailable after two minutes. Please try again."}
+                The server is still unavailable after two minutes. Please try again.
               </p>
               <Button type="button" variant="outline" onClick={() => {
-                setConnectionError(false);
                 setLoginError(null);
-                retry();
+                if (submitted) void form.handleSubmit(onSubmit)();
+                else void run();
               }}>
                 Retry
               </Button>
@@ -113,6 +109,7 @@ export default function LoginPage() {
               {(field) => (
                 <Input
                   {...field}
+                  disabled={pending}
                   type="email"
                   autoComplete="email"
                   placeholder="you@example.com"
@@ -123,13 +120,14 @@ export default function LoginPage() {
               {(field) => (
                 <Input
                   {...field}
+                  disabled={pending}
                   type="password"
                   autoComplete="current-password"
                   placeholder="••••••••"
                 />
               )}
             </FormField>
-            <Button type="submit" className="w-full" disabled={pending || readiness !== "ready" || status === "loading" || connectionError}>
+            <Button type="submit" className="w-full" disabled={pending || readiness !== "ready" || status === "loading"}>
               {pending ? "Signing in…" : "Sign in"}
             </Button>
           </form>

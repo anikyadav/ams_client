@@ -18,7 +18,7 @@ type AuthStatus = "loading" | "authenticated" | "anonymous";
 type AuthContextValue = {
   user: User | null;
   status: AuthStatus;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, signal?: AbortSignal) => Promise<User>;
   logout: () => void;
 };
 
@@ -52,11 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, signal?: AbortSignal) => {
       const response = await api.post<LoginResponse>("/auth/login", {
         email,
         password,
-      }, { timeout: 15_000 });
+      }, { timeout: 15_000, signal });
+      signal?.throwIfAborted();
       window.localStorage.setItem(TOKEN_KEY, response.data.accessToken);
       await queryClient.cancelQueries();
       queryClient.clear();
