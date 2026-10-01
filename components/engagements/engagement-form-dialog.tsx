@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { FormDialog as Dialog, FormError } from "@/components/shared/form-dialog";
 import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
+import { BsDatePicker } from "@/components/ui/bs-date-picker";
+import { ENGAGEMENT_PRIORITIES, normalizePriority } from "@/lib/engagement-priority";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
@@ -65,7 +66,7 @@ export function EngagementFormDialog({
       natureOfWork: "",
       startDate: "",
       targetDate: "",
-      priority: "",
+      priority: "Medium",
       status: "NOT_STARTED",
     },
   });
@@ -82,7 +83,7 @@ export function EngagementFormDialog({
         targetDate: engagement?.targetDate
           ? adToBs(engagement.targetDate.slice(0, 10))
           : "",
-        priority: engagement?.priority ?? "",
+        priority: engagement ? normalizePriority(engagement.priority) : "Medium",
       });
   }, [open, engagement, defaultClientId, form]);
   if (!engagement && !fiscalYear.startDate)
@@ -193,7 +194,7 @@ export function EngagementFormDialog({
             >
               {(field) => <Textarea {...field} rows={3} />}
             </FormField>
-            <div className="border-t pt-4"><p className="text-sm font-semibold">Schedule and progress</p><p className="mt-1 text-xs text-muted-foreground">Enter dates in BS using YYYY-MM-DD.</p></div>
+            <div className="border-t pt-4"><p className="text-sm font-semibold">Schedule and progress</p><p className="mt-1 text-xs text-muted-foreground">Choose dates from the BS calendar or enter YYYY-MM-DD. Target date is the planned end date.</p></div>
             <FormField control={form.control} name="status" label="Status">
               {(field) => (
                 <NativeSelect {...field}>
@@ -205,18 +206,14 @@ export function EngagementFormDialog({
                 </NativeSelect>
               )}
             </FormField>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
                 label="Start date (BS)"
               >
                 {(field) => (
-                  <Input
-                    {...field}
-                    placeholder="YYYY-MM-DD"
-                    inputMode="numeric"
-                  />
+                  <BsDatePicker {...field} label="Start date (BS)" />
                 )}
               </FormField>
               <FormField
@@ -225,11 +222,7 @@ export function EngagementFormDialog({
                 label="Target date (BS)"
               >
                 {(field) => (
-                  <Input
-                    {...field}
-                    placeholder="YYYY-MM-DD"
-                    inputMode="numeric"
-                  />
+                  <BsDatePicker {...field} label="Target date (BS)" />
                 )}
               </FormField>
             </div>
@@ -238,7 +231,11 @@ export function EngagementFormDialog({
               name="priority"
               label="Priority (optional)"
             >
-              {(field) => <Input {...field} placeholder="e.g. High" />}
+              {(field) => <NativeSelect {...field}>
+                <option value="">Not set</option>
+                {ENGAGEMENT_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
+                {field.value && !ENGAGEMENT_PRIORITIES.some((priority) => priority === field.value) && <option value={field.value}>{field.value} (existing)</option>}
+              </NativeSelect>}
             </FormField>
             <FormError message={form.formState.errors.root?.server?.message} />
           <DialogFooter>

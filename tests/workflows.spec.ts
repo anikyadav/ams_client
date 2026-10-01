@@ -478,7 +478,7 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
   );
   await page.getByLabel("Start date (BS)", { exact: true }).fill("");
   await page.getByLabel("Target date (BS)", { exact: true }).fill("");
-  await page.getByLabel("Priority (optional)").fill("");
+  await page.getByLabel("Priority (optional)").selectOption("");
   await page
     .getByRole("dialog")
     .getByLabel("Status", { exact: true })
@@ -1096,4 +1096,61 @@ test("form failure stays visible and retains entered values", async ({ page }) =
   await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("Please try again shortly");
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Retained client");
   await page.screenshot({ path: "test-results/design-form-error.png", fullPage: true });
+});
+
+test("BS calendar selects real month days, validates range and saves selected priority", async ({ page }) => {
+  const { calls } = await mockApi(page);
+  await login(page);
+  await page.goto("/engagements");
+  await page.getByRole("button", { name: "New engagement", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "New engagement" });
+  await dialog.getByLabel("Client", { exact: true }).selectOption("client");
+  await dialog.getByLabel("Primary staff", { exact: true }).selectOption("staff");
+  await dialog.getByLabel("Nature of work").fill("Calendar audit");
+  await dialog.getByRole("button", { name: "Choose Start date (BS)", exact: true }).click();
+  await dialog.getByLabel("Start date (BS) year", { exact: true }).selectOption("2083");
+  await dialog.getByLabel("Start date (BS) month", { exact: true }).selectOption("3");
+  await expect(dialog.getByRole("button", { name: "2083-03-32 BS", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "2083-03-32 BS", exact: true }).click();
+  await expect(dialog.getByLabel("Start date (BS)", { exact: true })).toHaveValue("2083-03-32");
+  await dialog.getByRole("button", { name: "Choose Target date (BS)", exact: true }).click();
+  await dialog.getByLabel("Target date (BS) year", { exact: true }).selectOption("2083");
+  await dialog.getByLabel("Target date (BS) month", { exact: true }).selectOption("4");
+  await expect(dialog.getByRole("button", { name: "2083-04-33 BS", exact: true })).toHaveCount(0);
+  await page.screenshot({ path: "test-results/bs-date-picker.png", fullPage: true });
+  await dialog.getByRole("button", { name: "2083-04-01 BS", exact: true }).click();
+  await dialog.getByLabel("Priority (optional)").selectOption("Low");
+  await dialog.getByLabel("Target date (BS)", { exact: true }).fill("2083-03-01");
+  await dialog.getByRole("button", { name: "Create engagement", exact: true }).click();
+  await expect(dialog.getByText("Target date cannot precede start date")).toBeVisible();
+  await dialog.getByLabel("Target date (BS)", { exact: true }).fill("2083-04-01");
+  await dialog.getByRole("button", { name: "Create engagement", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(calls.find((call) => call.path === "/engagements" && call.method === "POST")?.body).toMatchObject({ startDate: "2026-07-16", targetDate: "2026-07-17", priority: "Low" });
+  await expect(page.getByRole("region", { name: "Low priority group" }).getByRole("link", { name: "Calendar audit", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Calendar audit", exact: true }).click();
+  await page.getByRole("button", { name: "Edit engagement", exact: true }).click();
+  await expect(page.getByLabel("Start date (BS)", { exact: true })).toHaveValue("2083-03-32");
+  await expect(page.getByLabel("Priority (optional)")).toHaveValue("Low");
+});
+
+test("priority groups normalize older casing and preserve uncategorized work", async ({ page }) => {
+  const { engagements } = await mockApi(page);
+  engagements[0].priority = " high ";
+  engagements[1].priority = "Low";
+  engagements.push({ ...engagements[0], id: "medium", natureOfWork: "Medium work", priority: "Medium" });
+  engagements.push({ ...engagements[0], id: "other", natureOfWork: "Custom work", priority: "Special" });
+  engagements.push({ ...engagements[0], id: "none", natureOfWork: "No priority", priority: null });
+  await login(page);
+  await page.goto("/engagements");
+  const groups = page.locator('section[aria-label$="priority group"]');
+  await expect(groups).toHaveCount(5);
+  await expect(groups.nth(0)).toHaveAttribute("aria-label", "High priority group");
+  await expect(groups.nth(1)).toHaveAttribute("aria-label", "Medium priority group");
+  await expect(groups.nth(2)).toHaveAttribute("aria-label", "Low priority group");
+  await expect(groups.nth(3)).toHaveAttribute("aria-label", "Other priority group");
+  await expect(groups.nth(4)).toHaveAttribute("aria-label", "Not set priority group");
+  await page.getByLabel("Search engagements").fill("Medium work");
+  await expect(groups).toHaveCount(1);
+  await expect(groups).toHaveAttribute("aria-label", "Medium priority group");
 });
