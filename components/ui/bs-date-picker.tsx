@@ -28,6 +28,7 @@ export function BsDatePicker({ value = "", onChange, onBlur, label, ...inputProp
     if (open) panel.current?.scrollIntoView({ block: "nearest" });
   }, [open]);
   const [view, setView] = useState(() => adToBs(new Date().toISOString()).slice(0, 7));
+  const today = adToBs(new Date().toISOString());
   const [year, month] = view.split("-").map(Number);
   const first = new NepaliDate(year, month - 1, 1);
   const days = Object.values(dateConfigMap[String(year)])[month - 1];
@@ -70,7 +71,9 @@ export function BsDatePicker({ value = "", onChange, onBlur, label, ...inputProp
         {Array.from({ length: first.getDay() }, (_, index) => <span key={`blank-${index}`} />)}
         {Array.from({ length: days }, (_, index) => {
           const date = `${view}-${pad(index + 1)}`;
-          return <button type="button" key={date} aria-label={`${date} BS`} aria-pressed={value === date} className={`min-h-11 rounded-md text-sm focus-visible:outline-2 focus-visible:outline-ring ${value === date ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`} onClick={() => choose(date)}>{index + 1}</button>;
+          const isToday = date === today;
+          const selected = value === date;
+          return <button type="button" key={date} aria-label={`${date} BS`} aria-current={isToday ? "date" : undefined} title={isToday ? "Today" : undefined} aria-pressed={selected} className={`min-h-11 rounded-md text-sm focus-visible:outline-2 focus-visible:outline-ring ${selected ? "bg-primary text-primary-foreground" : isToday ? "bg-primary/10 font-semibold text-primary hover:bg-primary/15" : "hover:bg-accent"} ${isToday ? `ring-2 ring-inset ${selected ? "ring-primary-foreground/70" : "ring-primary"}` : ""}`} onClick={() => choose(date)}>{index + 1}</button>;
         })}
       </div>
       <div className="mt-2 flex justify-between border-t pt-2"><Button type="button" variant="ghost" size="sm" onClick={() => choose(adToBs(new Date().toISOString()))}>Today</Button><Button type="button" variant="ghost" size="sm" onClick={() => choose("")}>Clear date</Button></div>
