@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HistoryIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/lib/formats";
+import { ActivityTimeline } from "@/components/shared/activity-timeline";
 import { apiErrorMessage } from "@/lib/api";
 import { useEngagementActivity } from "@/lib/hooks";
 
@@ -36,16 +36,7 @@ export function ActivityPanel({ engagementId }: { engagementId: string }) {
         </p>
       )}
       {open && !!activity.data?.length && (
-        <ol className="space-y-3 border-l pl-4">
-          {activity.data.map((entry) => (
-            <li key={entry.id} className="text-sm">
-              <p>{entry.summary}</p>
-              <p className="text-xs text-muted-foreground">
-                {entry.actor.name} · {formatDateTime(entry.createdAt)}
-              </p>
-            </li>
-          ))}
-        </ol>
+        <ActivityTimeline entries={activity.data} />
       )}
     </section>
   );

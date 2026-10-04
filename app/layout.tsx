@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Audit Practice",
+  title: "AMS – Audit Management System",
   description: "Engagement and client management for audit teams.",
 };
 

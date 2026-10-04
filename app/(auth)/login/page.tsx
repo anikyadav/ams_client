@@ -2,8 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { Eye, EyeOff, Loader2, ShieldCheckIcon } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { redirect } from "next/navigation";
+import { brand } from "@/components/layout/nav";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -50,18 +52,21 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <ShieldCheckIcon className="size-6" />
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="flex w-36 items-center justify-center overflow-hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-border">
+          <Image
+            src={brand.logo}
+            alt={`${brand.name} – ${brand.fullName}`}
+            width={240}
+            height={259}
+            priority
+            className="h-auto w-full object-contain"
+          />
         </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Audit Practice
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Sign in to manage engagements and your team&apos;s work.
-          </p>
-        </div>
+        <h1 className="sr-only">{brand.fullName}</h1>
+        <p className="text-sm text-muted-foreground">
+          Sign in to manage engagements and your team&apos;s work.
+        </p>
       </div>
 
       <Card>

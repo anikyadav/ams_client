@@ -3,7 +3,6 @@ import {
   Building2,
   LayoutDashboard,
   ListChecks,
-  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +34,9 @@ export const navItems: NavItem[] = [
 ];
 
 export const brand = {
-  name: "Audit Practice",
-  icon: ShieldCheck,
+  name: "AMS",
+  fullName: "Audit Management System",
+  tagline: "Digital Assurance | Compliance | Efficiency",
+  mark: "/ams_mark.png",
+  logo: "/ams_logo.png",
 };

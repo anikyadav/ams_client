@@ -28,6 +28,11 @@ export default function TaskDetailPage() {
       />
     );
   const data = task.data;
+  // Newest first, so the first match is the latest completion.
+  const completion =
+    data.status === "DONE"
+      ? activity.data?.find((entry) => entry.action === "SUBTASK_COMPLETED")
+      : undefined;
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -78,6 +83,11 @@ export default function TaskDetailPage() {
                     {data.status === "DONE"
                       ? data.completedAt ? formatDateTime(data.completedAt) : "Completed"
                       : formatDateTime(data.createdAt)}
+                    {completion && (
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        by {completion.actor.name}
+                      </span>
+                    )}
                   </dd>
                 </div>
               </dl>

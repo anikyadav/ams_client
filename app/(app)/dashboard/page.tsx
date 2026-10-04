@@ -87,7 +87,7 @@ export default function DashboardPage() {
               Refresh
             </Button>
             {auditor && (
-              <Button variant="outline" render={<Link href="/staff" />}>Manage staff</Button>
+              <Button variant="outline" nativeButton={false} render={<Link href="/staff" />}>Manage staff</Button>
             )}
             {auditor && (
               <Button onClick={() => setFormOpen(true)}>

@@ -1,6 +1,43 @@
 import Link from "next/link";
+import {
+  CircleCheckBigIcon,
+  CirclePlusIcon,
+  MessageSquareTextIcon,
+  PencilIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+  TrendingUpIcon,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "cn";
 import { formatDateTime } from "@/lib/formats";
 import type { ActivityEntry } from "@/lib/types";
+
+const ACTION_STYLE: Record<string, { icon: LucideIcon; label: string; tone: string }> = {
+  SUBTASK_CREATED: { icon: CirclePlusIcon, label: "Created", tone: "bg-primary/10 text-primary" },
+  SUBTASK_PROGRESS: { icon: TrendingUpIcon, label: "Progress", tone: "bg-primary/10 text-primary" },
+  SUBTASK_COMPLETED: {
+    icon: CircleCheckBigIcon,
+    label: "Completed",
+    tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  },
+  SUBTASK_REOPENED: {
+    icon: RotateCcwIcon,
+    label: "Reopened",
+    tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  },
+  SUBTASK_NOTE: { icon: MessageSquareTextIcon, label: "Note", tone: "bg-muted text-muted-foreground" },
+  SUBTASK_UPDATED: { icon: PencilIcon, label: "Updated", tone: "bg-muted text-muted-foreground" },
+  SUBTASK_DELETED: { icon: Trash2Icon, label: "Deleted", tone: "bg-destructive/10 text-destructive" },
+};
+const FALLBACK_STYLE = { icon: PencilIcon, label: "Change", tone: "bg-muted text-muted-foreground" };
+
+// Older entries stored raw enum values; show the same labels the app uses elsewhere.
+const readable = (text: string) =>
+  text
+    .replace(/\bIN_PROGRESS\b/g, "In progress")
+    .replace(/\bTODO\b/g, "Not started")
+    .replace(/\bDONE\b/g, "Completed");
 
 /** Chronological audit trail: what changed, who did it and when. */
 export function ActivityTimeline({
@@ -11,25 +48,50 @@ export function ActivityTimeline({
   showEngagement?: boolean;
 }) {
   return (
-    <ol className="space-y-4 border-l pl-4">
-      {entries.map((entry) => (
-        <li key={entry.id} className="relative text-sm">
-          <span aria-hidden="true" className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
-          <p className="break-words">{entry.summary}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {entry.actor.name} ·{" "}
-            <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
-            {showEngagement && entry.engagement && (
-              <>
-                {" · "}
-                <Link className="underline" href={`/engagements/${entry.engagement.id}`}>
-                  {entry.engagement.client.name} — {entry.engagement.natureOfWork}
-                </Link>
-              </>
+    <ol className="space-y-5">
+      {entries.map((entry, index) => {
+        const style = ACTION_STYLE[entry.action] ?? FALLBACK_STYLE;
+        const Icon = style.icon;
+        // First line is the headline; anything after it is the user's note.
+        const [headline, ...rest] = readable(entry.summary).split("\n");
+        const note = rest.join("\n").replace(/^Note:\s*/, "");
+        return (
+          <li key={entry.id} className="relative flex gap-3 text-sm">
+            {index < entries.length - 1 && (
+              <span aria-hidden="true" className="absolute top-8 -bottom-5 left-3.5 w-px bg-border" />
             )}
-          </p>
-        </li>
-      ))}
+            <span
+              aria-hidden="true"
+              className={cn("z-10 flex size-7 shrink-0 items-center justify-center rounded-full", style.tone)}
+            >
+              <Icon className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="wrap-break-word">
+                <span className="sr-only">{style.label}: </span>
+                {headline}
+              </p>
+              {note && (
+                <blockquote className="wrap-break-word whitespace-pre-wrap rounded-md border-l-2 bg-muted/50 px-3 py-2 text-muted-foreground">
+                  {note}
+                </blockquote>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {entry.actor.name} ·{" "}
+                <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
+                {showEngagement && entry.engagement && (
+                  <>
+                    {" · "}
+                    <Link className="underline" href={`/engagements/${entry.engagement.id}`}>
+                      {entry.engagement.client.name} — {entry.engagement.natureOfWork}
+                    </Link>
+                  </>
+                )}
+              </p>
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
