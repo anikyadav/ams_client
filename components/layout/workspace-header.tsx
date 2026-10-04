@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { MobileNav } from "./mobile-nav";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
 import { navItems } from "./nav";
 import { useAuth } from "@/components/providers/auth-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -24,6 +25,7 @@ export function WorkspaceHeader({ controls }: { controls: ReactNode }) {
             {pathname !== section.href && <><li aria-hidden="true"><ChevronRight className="size-4 text-muted-foreground" /></li><li aria-current="page">Details</li></>}
           </ol>}
         </nav>
+        <NotificationBell />
         <ThemeToggle />
         {user && <div className="hidden items-center gap-2 border-l pl-4 sm:flex"><UserAvatar name={user.name} /><span className="max-w-36 truncate text-sm">{user.name}</span></div>}
       </div>

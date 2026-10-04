@@ -11,6 +11,7 @@ import { QueryState } from "@/components/shared/query-state";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { EngagementFormDialog } from "@/components/engagements/engagement-form-dialog";
 import { SubTaskFormDialog } from "@/components/engagements/subtask-form-dialog";
+import { ActivityPanel } from "@/components/engagements/activity-panel";
 import { CommentThread } from "@/components/engagements/comment-thread";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -231,6 +232,7 @@ export default function EngagementDetailPage() {
         <aside className="space-y-4">
           <h2 className="text-sm font-semibold">Project updates</h2>
           <EngagementProgressControl engagement={data} />
+          <ActivityPanel key={data.id} engagementId={data.id} />
           <p className="text-xs leading-5 text-muted-foreground">
             Sub-tasks belong to this engagement. Use their status and progress
             to track delivery, and share project-wide updates here.

@@ -1,4 +1,4 @@
-﻿# Audit Practice — Engagement Management
+# Audit Practice — Engagement Management
 
 Next.js App Router frontend for the existing NestJS / Prisma backend. This MVP implements Engagement / Job Management for AUDITOR and STAFF roles. Billing, documents, compliance calendars and other practice-management modules are out of scope.
 
@@ -55,7 +55,9 @@ Open http://localhost:3000. `/` opens login; auditors land on `/dashboard`, staf
 ## Workflows
 
 - **Auditor:** create/edit/delete client names; create staff accounts; view all engagements; create engagements with an existing or quick-added client; edit all engagement fields and status; create/edit/reassign/delete subtasks; change task status; post, edit and delete comments.
-- **Staff:** My work includes primary-staff assignments and engagements with at least one assigned subtask. It shows only the user's tasks; engagement detail shows the full task list and discussion. Staff can change only their own task statuses and post comments on any visible engagement or its subtasks.
+- **Staff:** My work includes primary-staff assignments and engagements with at least one assigned subtask. It shows only the user's tasks, with Assigned / Completed / My activity sections. The API returns only the sub-tasks (and their discussion and audit trail) assigned to the staff member; primary staff of an engagement see all of its sub-tasks. Each task has a detail page at `/tasks/:id` with progress, discussion and its audit trail.
+- **Notifications:** the bell in the header lists assignments, status/progress updates, comments and due-soon/overdue reminders (generated on demand by the API, deduplicated per item and date).
+- **Audit trail:** engagement and task changes are recorded server-side with actor and time. Apply the two new backend migrations (`activity_log`, `notifications_task_tracking`) before using these features. Staff can change only their own task statuses and post comments on any visible engagement or its subtasks.
 - **Progress:** use the backend's rounded `DONE / total * 100`, zero for no tasks. Mutations refresh both the list and detail.
 - **Comments:** oldest first, with author, timestamp and engagement/subtask scope.
 - **Authentication:** JWT bearer access tokens, restored through `/auth/me`; expiry returns to login. Query caches clear on login/logout. Client and staff queries run only for auditors. The backend remains the authority for role and assignment enforcement.

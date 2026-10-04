@@ -7,7 +7,9 @@ import { brand, navItems, type NavItem } from "@/components/layout/nav";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { RoleBadge } from "@/components/shared/page-header";
-import { LogOutIcon } from "lucide-react";
+import { KeyRoundIcon, LogOutIcon } from "lucide-react";
+import { useState } from "react";
+import { ChangePasswordDialog } from "@/components/layout/change-password-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
 
 function NavLink({
@@ -56,6 +58,7 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const visible = navItems.filter((item) =>
     user ? item.roles.includes(user.role) : false,
   );
@@ -82,6 +85,16 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             variant="ghost"
             size="sm"
             className="mt-2 w-full justify-start gap-2 text-muted-foreground"
+            onClick={() => setPasswordOpen(true)}
+          >
+            <KeyRoundIcon className="size-4" />
+            Change password
+          </Button>
+          <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-muted-foreground"
             onClick={logout}
           >
             <LogOutIcon className="size-4" />

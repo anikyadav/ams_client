@@ -31,6 +31,15 @@ export const createStaffSchema = z.object({
 });
 export type CreateStaffValues = z.infer<typeof createStaffSchema>;
 
+export const editStaffSchema = createStaffSchema.extend({
+  password: z.union([z.literal(""), createStaffSchema.shape.password]),
+  confirmPassword: z.string(),
+}).refine((value) => value.password === value.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+export type EditStaffValues = z.infer<typeof editStaffSchema>;
+
 export const clientSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   pan: z.string().trim().refine((value) => !value || /^[0-9]{9}$/.test(value), "PAN must contain exactly 9 digits"),
@@ -92,3 +101,18 @@ export const commentSchema = z.object({
   text: z.string().trim().min(1, "Comment cannot be empty").max(2000),
 });
 export type CommentValues = z.infer<typeof commentSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password"),
+    newPassword: z
+      .string()
+      .min(12, "Use at least 12 characters")
+      .refine((value) => new TextEncoder().encode(value).length <= 72, "Password is too long"),
+    confirmPassword: z.string(),
+  })
+  .refine((value) => value.newPassword === value.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;

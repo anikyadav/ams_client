@@ -1,5 +1,6 @@
 "use client";
 
+import { nepalToday } from "@/lib/project-tracking";
 import { useState } from "react";
 import {
   CalendarDays,
@@ -414,12 +415,7 @@ function ProjectTimeline({
   const ticks = Array.from({ length: 7 }, (_, index) =>
     new Date(min + ((max - min) * index) / 6).toISOString(),
   );
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kathmandu",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  const today = nepalToday();
   const todayPosition = position(today);
   const gridStyle = {
     backgroundImage:

@@ -1,5 +1,6 @@
 "use client";
 
+import { nepalToday } from "@/lib/project-tracking";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -50,12 +51,7 @@ export function FiscalYearProvider({ children, renderControls }: { children: Rea
     queryKey: ["fiscal-years"],
     queryFn: async () => (await api.get<FiscalYear[]>("/fiscal-years")).data,
   });
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kathmandu",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  const today = nepalToday();
   const selected =
     years.data?.find((year) => year.id === selectedId) ??
     years.data?.find(

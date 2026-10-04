@@ -14,14 +14,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EngagementStatusBadge } from "@/components/shared/status-badge";
 import { ENGAGEMENT_STATUS_OPTIONS } from "@/lib/schemas";
 import { formatDate, engagementStatusLabel } from "@/lib/formats";
-import { isOverdue } from "@/lib/project-tracking";
+import { isClosedStatus, isOverdue } from "@/lib/project-tracking";
 import type { Engagement } from "@/lib/types";
 
 export function EngagementList({ engagements }: { engagements: Engagement[] }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState("priority");
-  const overdue = (job: Engagement) => isOverdue(job.targetDate, ["COMPLETE", "DELIVERED"].includes(job.status));
+  const overdue = (job: Engagement) => isOverdue(job.targetDate, isClosedStatus(job.status));
   const visible = engagements.filter((job) =>
     `${job.client.name} ${job.natureOfWork} ${job.staff.name}`.toLowerCase().includes(search.toLowerCase()) &&
     (!status || (status === "OVERDUE" ? overdue(job) : job.status === status)),
@@ -46,7 +46,7 @@ export function EngagementList({ engagements }: { engagements: Engagement[] }) {
     <div className="space-y-3 md:hidden">{group.items.map((job) => <article key={job.id} className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link href={`/engagements/${job.id}`} className="font-semibold text-primary">{job.client.name}</Link><p className="mt-1 break-words text-sm">{job.natureOfWork}</p></div><EngagementStatusBadge status={job.status} /></div>
       <p className="my-3 text-sm text-muted-foreground">{job.staff.name}</p>
-      <Deadline date={job.targetDate} complete={["COMPLETE", "DELIVERED"].includes(job.status)} />
+      <Deadline date={job.targetDate} complete={isClosedStatus(job.status)} />
       <div className="mt-4 flex items-center gap-3"><Progress className="flex-1" value={job.progress} aria-label={`Progress for ${job.natureOfWork}`} /><span className="text-xs tabular-nums">{job.progress}%</span></div>
       <Link className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary" href={`/engagements/${job.id}`}>Open engagement <ArrowRight aria-hidden="true" className="size-4" /></Link>
     </article>)}</div>

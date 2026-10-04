@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { EngagementProgressControl } from "@/components/engagements/engagement-progress-control";
 import { TaskDiscussion } from "@/components/engagements/task-discussion";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -12,10 +13,19 @@ import { EngagementStatusBadge } from "@/components/shared/status-badge";
 import { SubTaskStatusControl } from "@/components/engagements/subtask-status-control";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  CompletedTasks,
+  MyActivity,
+  MyWorkSummary,
+  MyWorkTabs,
+  collectMyTasks,
+  type MyWorkTab,
+} from "@/components/engagements/my-work-panels";
 
 export default function MyWorkPage() {
   const { user } = useAuth();
   const query = useEngagements();
+  const [tab, setTab] = useState<MyWorkTab>("assigned");
   const engagements = user
     ? (query.data ?? []).filter((item) => canViewEngagement(user, item))
     : [];
@@ -23,19 +33,27 @@ export default function MyWorkPage() {
     <div className="space-y-6">
       <PageHeader
         title="My work"
-        description="Your engagements and assigned sub-tasks for the selected fiscal year. Open an engagement to see its full context and discussion."
+        description="Only the work assigned to you in the selected fiscal year: your tasks, what you have completed, and a trail of your activity."
       />
+      {user && !query.error && !query.isLoading && (
+        <MyWorkSummary tasks={collectMyTasks(engagements, user.id)} />
+      )}
+      <MyWorkTabs value={tab} onChange={setTab} />
+      {tab === "completed" && user && (
+        <CompletedTasks tasks={collectMyTasks(engagements, user.id)} />
+      )}
+      {tab === "activity" && <MyActivity />}
       <QueryState
         loading={query.isLoading}
         error={query.error}
         retry={() => void query.refetch()}
       />
-      {!query.isLoading && !query.error && engagements.length === 0 && (
+      {tab === "assigned" && !query.isLoading && !query.error && engagements.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No engagements assigned to you yet.
         </p>
       )}
-      {!query.error &&
+      {tab === "assigned" && !query.error &&
         engagements.map((engagement) => {
           const tasks = engagement.subTasks.filter(
             (task) => task.assignedToId === user?.id,
@@ -84,6 +102,12 @@ export default function MyWorkPage() {
                       {task.title}
                     </Link>
                     <div className="w-full sm:w-72">
+                      <Link
+                        className="mb-2 inline-block text-xs text-primary underline"
+                        href={`/tasks/${task.id}`}
+                      >
+                        Task details &amp; audit trail
+                      </Link>
                       <SubTaskStatusControl task={task} />
                       <TaskDiscussion engagement={engagement} task={task} />
                     </div>

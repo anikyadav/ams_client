@@ -1,3 +1,4 @@
+import { nepalToday } from "@/lib/project-tracking";
 import type {
   Client,
   Engagement,
@@ -26,12 +27,7 @@ export function summarizeDashboard(
   fiscalYearId: string,
   now: Date,
 ) {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kathmandu",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
+  const today = nepalToday(now);
   const end = new Date(`${today}T00:00:00Z`);
   end.setUTCDate(end.getUTCDate() + 7);
   const weekEnd = end.toISOString().slice(0, 10);

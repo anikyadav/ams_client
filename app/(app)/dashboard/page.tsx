@@ -87,6 +87,9 @@ export default function DashboardPage() {
               Refresh
             </Button>
             {auditor && (
+              <Button variant="outline" render={<Link href="/staff" />}>Manage staff</Button>
+            )}
+            {auditor && (
               <Button onClick={() => setFormOpen(true)}>
                 <PlusIcon className="size-4" />
                 New engagement

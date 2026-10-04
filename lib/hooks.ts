@@ -2,7 +2,16 @@ import { useFiscalYear } from "@/components/providers/fiscal-year-provider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api as baseApi } from "@/lib/api";
 import { useAuth } from "@/components/providers/auth-provider";
-import type { Client, Comment, Engagement, SubTask, User } from "@/lib/types";
+import type {
+  ActivityEntry,
+  Client,
+  Comment,
+  Engagement,
+  NotificationList,
+  SubTask,
+  SubTaskDetail,
+  User,
+} from "@/lib/types";
 
 function useFiscalApi() {
   const year = useFiscalYear();
@@ -26,6 +35,10 @@ export const queryKeys = {
 function invalidateEngagements(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ["engagements"] });
   void queryClient.invalidateQueries({ queryKey: ["engagement"] });
+  void queryClient.invalidateQueries({ queryKey: ["subtask"] });
+  void queryClient.invalidateQueries({ queryKey: ["subtask-activity"] });
+  void queryClient.invalidateQueries({ queryKey: ["engagement-activity"] });
+  void queryClient.invalidateQueries({ queryKey: ["my-activity"] });
 }
 
 export const useClients = () => {
@@ -127,6 +140,19 @@ export const useCreateStaff = () => {
     }) => (await api.post<User>("/users", payload)).data,
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: ["staff"] }),
+  });
+};
+
+export const useUpdateStaff = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: string; name?: string; email?: string; password?: string }) =>
+      (await api.patch<User>(`/users/${id}`, payload)).data,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.staff });
+      invalidateEngagements(queryClient);
+    },
   });
 };
 
@@ -272,5 +298,78 @@ export const useDeleteComment = () => {
   return useMutation({
     mutationFn: async (id: string) => api.delete(`/comments/${id}`),
     onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useEngagementActivity = (id: string, enabled: boolean) => {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  return useQuery({
+    queryKey: ["engagement-activity", id, year.id],
+    enabled,
+    staleTime: 0,
+    queryFn: async () =>
+      (await api.get<ActivityEntry[]>(`/engagements/${id}/activity`)).data,
+  });
+};
+
+export const useChangePassword = () =>
+  useMutation({
+    mutationFn: async (payload: { currentPassword: string; newPassword: string }) =>
+      baseApi.post("/auth/change-password", payload),
+  });
+
+export const useSubTask = (id: string) => {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  return useQuery({
+    queryKey: ["subtask", id, year.id],
+    refetchInterval: 15_000,
+    enabled: Boolean(id),
+    queryFn: async () => (await api.get<SubTaskDetail>(`/subtasks/${id}`)).data,
+  });
+};
+
+export const useSubTaskActivity = (id: string) => {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  return useQuery({
+    queryKey: ["subtask-activity", id, year.id],
+    enabled: Boolean(id),
+    queryFn: async () =>
+      (await api.get<ActivityEntry[]>(`/subtasks/${id}/activity`)).data,
+  });
+};
+
+export const useMyActivity = (enabled = true) => {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  return useQuery({
+    queryKey: ["my-activity", year.id],
+    enabled,
+    queryFn: async () => (await api.get<ActivityEntry[]>("/activity/mine")).data,
+  });
+};
+
+export const useNotifications = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["notifications"],
+    enabled: Boolean(user),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    queryFn: async () => (await baseApi.get<NotificationList>("/notifications")).data,
+  });
+};
+
+export const useMarkNotificationsRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id?: string) =>
+      id
+        ? baseApi.post(`/notifications/${id}/read`)
+        : baseApi.post("/notifications/read-all"),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 };

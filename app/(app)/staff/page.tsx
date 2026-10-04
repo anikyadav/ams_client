@@ -13,6 +13,8 @@ import {
 } from "@/components/shared/page-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { StaffFormDialog } from "@/components/staff/staff-form-dialog";
+import { StaffEditDialog } from "@/components/staff/staff-edit-dialog";
+import type { User } from "@/lib/types";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useStaff } from "@/lib/hooks";
@@ -22,6 +24,7 @@ export default function StaffPage() {
   const { user } = useAuth();
   const staff = useStaff();
   const [formOpen, setFormOpen] = useState(false);
+  const [selected, setSelected] = useState<{ member: User; resetPassword: boolean } | null>(null);
 
   const isAuditor = user?.role === "AUDITOR";
   if (!isAuditor) redirect("/tasks");
@@ -78,6 +81,12 @@ export default function StaffPage() {
                     <TableCell className="text-muted-foreground">
                       {formatDate(member.createdAt)}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" aria-label={`Edit ${member.name}`} onClick={() => setSelected({ member, resetPassword: false })}>Edit</Button>
+                        <Button variant="outline" size="sm" aria-label={`Reset password for ${member.name}`} onClick={() => setSelected({ member, resetPassword: true })}>Reset password</Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -87,6 +96,7 @@ export default function StaffPage() {
       </Card>
 
       <StaffFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <StaffEditDialog member={selected?.member ?? null} resetPassword={selected?.resetPassword ?? false} onClose={() => setSelected(null)} />
     </div>
   );
 }

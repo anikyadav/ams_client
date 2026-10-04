@@ -39,6 +39,7 @@ export type SubTask = {
   progress: number;
   assignedToId: string;
   assignedTo: User;
+  completedAt?: string | null;
   createdAt: string;
 };
 
@@ -75,4 +76,45 @@ export type LoginResponse = {
   tokenType: string;
   expiresIn: number;
   user: User;
+};
+
+export type ActivityEntry = {
+  id: string;
+  engagementId: string;
+  action: string;
+  summary: string;
+  createdAt: string;
+  subTaskId?: string | null;
+  actor: User;
+  engagement?: {
+    id: string;
+    natureOfWork: string;
+    client: { name: string };
+  };
+};
+
+export type SubTaskDetail = SubTask & {
+  engagement: {
+    id: string;
+    natureOfWork: string;
+    status: EngagementStatus;
+    staffId: string;
+    client: { id: string; name: string };
+  };
+};
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  engagementId: string | null;
+  subTaskId: string | null;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type NotificationList = {
+  items: AppNotification[];
+  unreadCount: number;
 };

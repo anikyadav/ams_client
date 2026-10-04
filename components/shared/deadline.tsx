@@ -1,7 +1,8 @@
+import { nepalToday } from "@/lib/project-tracking";
 import { formatDate } from "@/lib/formats";
 
 export function deadlineLabel(date: string, now = new Date()) {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kathmandu", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const today = nepalToday(now);
   const days = Math.round((Date.parse(date.slice(0, 10)) - Date.parse(today)) / 86_400_000);
   if (!Number.isFinite(days)) return "";
   if (days < 0) return `${-days} ${days === -1 ? "day" : "days"} overdue`;
