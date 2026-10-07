@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { QueryState } from "@/components/shared/query-state";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { IrdExport } from "@/components/clients/ird-export";
 import {
   Table,
   TableBody,
@@ -44,6 +45,7 @@ export default function ClientsPage() {
         title="Clients"
         description="Independent client profiles for the selected fiscal year."
         actions={
+          <><IrdExport />
           <Button
             onClick={() => {
               setEditing(undefined);
@@ -51,7 +53,7 @@ export default function ClientsPage() {
             }}
           >
             Add client
-          </Button>
+          </Button></>
         }
       />
       <div className="flex flex-col gap-3 sm:flex-row">

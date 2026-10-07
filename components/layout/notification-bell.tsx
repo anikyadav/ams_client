@@ -17,6 +17,8 @@ import type { AppNotification } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function target(item: AppNotification) {
+  if (item.subTaskId && item.engagementId)
+    return `/engagements/${item.engagementId}?task=${item.subTaskId}`;
   if (item.subTaskId) return `/tasks/${item.subTaskId}`;
   if (item.engagementId) return `/engagements/${item.engagementId}`;
   return null;

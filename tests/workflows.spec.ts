@@ -195,6 +195,19 @@ async function mockApi(page: Page, primaryOnly = false) {
       engagements.push(job);
       return respond(job);
     }
+    if (method === "GET" && path.endsWith("/activity")) return respond([]);
+    if (method === "GET" && path.endsWith("/participants"))
+      return respond(
+        [auditor, staff, other].map(({ id, name, role }) => ({ id, name, role })),
+      );
+    if (method === "POST" && path === "/engagements/clone")
+      return respond(
+        {
+          created: [{ id: "cloned", clientName: "Example Client", natureOfWork: "Old audit" }],
+          skipped: [{ sourceId: "x", label: "Other work", reason: "Already exists in this fiscal year" }],
+        },
+        201,
+      );
     const parts = path.split("/");
     const job = engagements.find((job) => job.id === parts[2]);
     if (parts[1] === "engagements" && job) {
@@ -212,6 +225,22 @@ async function mockApi(page: Page, primaryOnly = false) {
         };
         job.subTasks.push(task as Engagement["subTasks"][number]);
         return respond(task);
+      }
+      if (parts[3] === "requests") {
+        const request = {
+          id: nextId(),
+          engagementId: job.id,
+          title: body.title,
+          description: null,
+          dueDate: body.dueDate ?? null,
+          status: "REQUESTED" as const,
+          reference: null,
+          receivedAt: null,
+          receivedBy: null,
+          createdAt: auditor.createdAt,
+        };
+        (job.documentRequests ??= []).push(request);
+        return respond(request, 201);
       }
       if (parts[3] === "comments") {
         const comment = {
@@ -242,11 +271,50 @@ async function mockApi(page: Page, primaryOnly = false) {
       }
       return respond(job);
     }
+    if (parts[1] === "document-requests") {
+      const owner = engagements.find((item) =>
+        (item.documentRequests ?? []).some((request) => request.id === parts[2]),
+      )!;
+      const request = owner.documentRequests!.find((item) => item.id === parts[2])!;
+      if (method === "PATCH") {
+        Object.assign(request, body);
+        if (body.status === "RECEIVED") {
+          request.receivedBy = actor;
+          request.receivedAt = auditor.createdAt;
+        }
+        return respond(request);
+      }
+      owner.documentRequests = owner.documentRequests!.filter((item) => item.id !== request.id);
+      return route.fulfill({ status: 204 });
+    }
+    if (parts[1] === "checklist-items") {
+      const holder = engagements
+        .flatMap((item) => item.subTasks)
+        .find((candidate) => (candidate.checklist ?? []).some((entry) => entry.id === parts[2]))!;
+      const entry = holder.checklist!.find((item) => item.id === parts[2])!;
+      if (method === "PATCH") Object.assign(entry, body);
+      else holder.checklist = holder.checklist!.filter((item) => item.id !== entry.id);
+      return respond(holder);
+    }
     if (parts[1] === "subtasks") {
       const parent = engagements.find((job) =>
         job.subTasks.some((task) => task.id === parts[2]),
       )!;
       const task = parent.subTasks.find((task) => task.id === parts[2])!;
+      if (parts[3] === "review") {
+        if (body.decision === "APPROVE") task.reviewState = "APPROVED";
+        else {
+          task.reviewState = "CHANGES_REQUESTED";
+          task.reviewNote = body.note;
+          task.status = "IN_PROGRESS";
+          task.progress = 75;
+        }
+        return respond(task, 201);
+      }
+      if (parts[3] === "checklist") {
+        (task.checklist ??= []).push({ id: nextId(), text: body.text, done: false });
+        return respond(task, 201);
+      }
       if (parts[3] === "comments") {
         const comment = {
           ...body,
@@ -330,36 +398,31 @@ test("staff sees subtask-only assignments, changes only own statuses, comments a
     path: "test-results/staff-work.png",
     fullPage: true,
   });
-  await page
-    .getByRole("radiogroup", { name: /Milestone for Assigned review/ })
-    .getByRole("radio", { name: "50%", exact: true })
-    .click();
-  await expect(
-    page.getByText("In progress · 50%", { exact: true }),
-  ).toBeVisible();
+  await page.getByLabel("Status for Assigned review").selectOption("IN_PROGRESS");
+  await expect(page.getByLabel("Status for Assigned review")).toHaveValue("IN_PROGRESS");
   await page
     .getByRole("link", { name: /Example Client — Annual audit/ })
     .click();
   await expect(
     page.getByRole("heading", { name: "Other staff work" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("radiogroup", { name: /Milestone for Other staff work/ }),
-  ).toHaveCount(0);
+  await expect(page.getByLabel("Status for Other staff work")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Edit engagement", exact: true }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Add sub-task", exact: true }),
   ).toHaveCount(0);
-await page
+await page.getByRole("button", { name: "Assigned review", exact: true }).click();
+  await page
+    .getByRole("dialog")
     .getByRole("radiogroup", { name: /Milestone for Assigned review/ })
     .getByRole("radio", { name: "100%", exact: true })
     .click();
-  await expect(
-    page.getByText("Complete", { exact: true }),
-  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Status for Assigned review")).toHaveValue("DONE");
   await expect(page.getByText("Progress: 50%", { exact: false })).toBeVisible();
+  await page.getByRole("tab", { name: /Discussion & activity/ }).click();
   await page.getByLabel("Comment on").selectOption("others");
   await page.getByLabel("Your comment").fill("Context for the team");
   await page.getByRole("button", { name: "Post comment" }).click();
@@ -376,7 +439,7 @@ await page
   expect(
     calls.filter((call) => call.path === "/clients" || call.path === "/users"),
   ).toEqual([]);
-  expect(calls.filter((call) => call.method === "PATCH").map((call) => call.body)).toEqual([{ progress: 50 }, { progress: 100 }]);
+  expect(calls.filter((call) => call.method === "PATCH").map((call) => call.body)).toEqual([{ status: "IN_PROGRESS" }, { progress: 100 }]);
   expect(errors).toEqual([]);
 });
 
@@ -409,7 +472,7 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
   await page
     .getByRole("link", { name: "New audit scope", exact: true })
     .click();
-  await page.getByRole("button", { name: "Add sub-task", exact: true }).click();
+  await page.getByRole("button", { name: "Create new sub-task", exact: true }).first().click();
   await page.getByLabel("Title", { exact: true }).fill("Audit checks");
   await page.getByLabel("Assigned to", { exact: true }).selectOption("staff");
   await page
@@ -431,6 +494,7 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
   await expect(
     page.getByRole("heading", { name: "Revised checks" }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Discussion & activity/ }).click();
   await page.getByLabel("Your comment").fill("Initial comment");
   await page.getByRole("button", { name: "Post comment" }).click();
   await page.getByRole("button", { name: "Edit comment", exact: true }).click();
@@ -451,6 +515,7 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
   await expect(page.getByText("Updated comment", { exact: true })).toHaveCount(
     0,
   );
+  await page.getByRole("tab", { name: "Tasks" }).click();
   await page.getByRole("button", { name: "Actions for Revised checks", exact: true }).click();
   await page.getByRole("menuitem", { name: "Delete sub-task", exact: true }).click();
   await page
@@ -459,7 +524,10 @@ test("auditor creates a job with quick-add client, edits dates, manages tasks an
     .click();
   await expect(page.getByText("Progress: 0%", { exact: false })).toBeVisible();
   await page
-    .getByRole("button", { name: "Delete engagement", exact: true })
+    .getByRole("button", { name: "More engagement actions", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Delete engagement", exact: true })
     .click();
   await page
     .getByRole("alertdialog")
@@ -891,14 +959,11 @@ test("staff dashboard supports milestone comments, completion and task discussio
   await page.goto("/dashboard");
   const task = page.getByRole("article", { name: "Assigned review", exact: true });
   await expect(task).toBeVisible();
-  await task.getByLabel("Update comment for Assigned review").fill("Evidence ready for review");
-  await task.getByRole("radio", { name: "75%", exact: true }).click();
-  await expect(task.getByText(/In progress.*75%/)).toBeVisible();
-  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ progress: 75, comment: "Evidence ready for review" });
-  await task.getByRole("radio", { name: "100%", exact: true }).click();
+  await task.getByLabel("Status for Assigned review").selectOption("DONE");
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "DONE" });
   await expect(task).toHaveCount(0);
   await page.getByRole("button", { name: "Complete (1)", exact: true }).click();
-  await expect(task.getByText("Complete", { exact: true })).toBeVisible();
+  await expect(task.getByLabel("Status for Assigned review")).toHaveValue("DONE");
   await task.getByRole("button", { name: /Discussion & updates/ }).click();
   const dialog = page.getByRole("dialog", { name: "Assigned review" });
   await dialog.getByLabel("Your comment").fill("Please check my completed work");
@@ -924,9 +989,9 @@ test("primary staff updates an engagement without subtasks from My work and dash
   await form.getByRole("button", { name: "Save progress update" }).click();
   await expect(form.getByText(/Current: 100%/)).toBeVisible();
   await expect(page.getByText("0 open", { exact: false })).toBeVisible();
-  await page.goto("/engagements/job");
+  await page.goto("/engagements/job?tab=overview");
   await expect(form).toBeVisible();
-  await expect(page.getByText("Complete", { exact: true })).toBeVisible();
+  await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
   await page.screenshot({ path: "test-results/engagement-progress.png", fullPage: true });
 });
 
@@ -939,7 +1004,7 @@ test("engagement list opens its workspace and planning fields stay on the parent
   await expect(page.getByRole("link", { name: "Unassigned tax job", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Example Client", exact: true }).click();
   await expect(page).toHaveURL(/\/engagements\/job$/);
-  await page.getByRole("button", { name: "Add sub-task", exact: true }).click();
+  await page.getByRole("button", { name: "Create new sub-task", exact: true }).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText(/Example Client.*Annual audit/)).toBeVisible();
   await dialog.getByLabel("Title", { exact: true }).fill("Deadline review");
@@ -967,22 +1032,24 @@ test("project workspace switches board, list and deadline timeline with parent c
   await login(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/engagements/job");
-  await expect(page.getByRole("button", { name: "Board", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Checklist", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Board", exact: true }).click();
+  await expect(page).toHaveURL(/view=board/);
   await expect(page.getByRole("region", { name: "To do tasks" }).getByRole("heading", { name: "Assigned review" })).toBeVisible();
-  await expect(page.getByText("PARENT ENGAGEMENT", { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/project-board.png", fullPage: true });
   await page.getByRole("button", { name: "Timeline", exact: true }).click();
   await expect(page.getByText("Unscheduled · No due date")).toBeVisible();
   await page.screenshot({ path: "test-results/project-timeline.png", fullPage: true });
   await page.getByRole("button", { name: "Assigned review", exact: true }).click();
   const dialog = page.getByRole("dialog");
+  await expect(page).toHaveURL(/task=own/);
   await expect(dialog.getByText("Sub-task of Annual audit · Example Client")).toBeVisible();
-  await expect(dialog.getByText("HIGH", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("HIGH", { exact: true }).first()).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "List", exact: true }).click();
-  await expect(page.getByRole("article", { name: "Assigned review", exact: true })).toBeVisible();
+  await expect(page.getByRole("row", { name: "Assigned review", exact: true })).toBeVisible();
   await page.getByLabel("Filter sub-task assignee").selectOption("other");
-  await expect(page.getByRole("article", { name: "Assigned review", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: "Assigned review", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Clear filters" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Board", exact: true }).click();
@@ -1027,16 +1094,17 @@ test("auditors cannot edit staff comments in engagement or task discussions", as
   const { engagements } = await mockApi(page);
   engagements[0].comments.push({ id: "staff-comment", engagementId: "job", subTaskId: "own", authorId: staff.id, author: staff, text: "Staff evidence update", createdAt: staff.createdAt });
   await login(page);
-  await page.goto("/engagements/job");
+  await page.goto("/engagements/job?tab=activity");
   await expect(page.getByText("Staff evidence update", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit comment", exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Tasks" }).click();
   await page.getByRole("article", { name: "Assigned review", exact: true }).getByRole("button", { name: "Discussion & updates (1)" }).click();
   await expect(page.getByRole("dialog").getByText("Staff evidence update", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog").getByRole("button", { name: "Edit comment", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await login(page, staff.email);
-  await page.goto("/engagements/job");
+  await page.goto("/engagements/job?tab=activity");
   await page.getByRole("button", { name: "Edit comment", exact: true }).click();
   await page.getByLabel("Edit comment", { exact: true }).fill("Corrected by its author");
   await page.getByRole("button", { name: "Save comment", exact: true }).click();
@@ -1153,4 +1221,223 @@ test("priority groups normalize older casing and preserve uncategorized work", a
   await page.getByLabel("Search engagements").fill("Medium work");
   await expect(groups).toHaveCount(1);
   await expect(groups).toHaveAttribute("aria-label", "Medium priority group");
+});
+
+test("quick filters live in the URL, and a task opens straight from ?task= with a merged feed", async ({ page }) => {
+  const { engagements } = await mockApi(page);
+  engagements[0].subTasks[0].dueDate = "2020-01-01";
+  engagements[0].comments.push({ id: "c1", engagementId: "job", subTaskId: "own", authorId: staff.id, author: staff, text: "Evidence uploaded", createdAt: staff.createdAt });
+  await login(page);
+  await page.goto("/engagements/job?quick=overdue");
+  await expect(page.getByRole("button", { name: /^Overdue/, pressed: true })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Assigned review", exact: true })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Other staff work", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page).not.toHaveURL(/quick=/);
+  await expect(page.getByRole("article", { name: "Other staff work", exact: true })).toBeVisible();
+  await page.goto("/engagements/job?task=own");
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("heading", { name: "Assigned review" })).toBeVisible();
+  await drawer.getByRole("tab", { name: /Discussion & activity/ }).click();
+  await expect(drawer.getByText("Evidence uploaded")).toBeVisible();
+  await drawer.getByRole("button", { name: /^History/ }).click();
+  await expect(drawer.getByText("Evidence uploaded")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page).not.toHaveURL(/task=/);
+});
+
+test("engagement shows health, a stage stepper and an overview tab", async ({ page }) => {
+  const { engagements, calls } = await mockApi(page);
+  engagements[0].subTasks[0].dueDate = "2020-01-01";
+  await login(page);
+  await page.goto("/engagements/job");
+  await expect(page.getByText("Off track").first()).toBeVisible();
+  await page.getByRole("button", { name: "Set stage to In progress" }).click();
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "IN_PROGRESS" });
+  await page.getByRole("tab", { name: "Overview" }).click();
+  await expect(page).toHaveURL(/tab=overview/);
+  await expect(page.getByText("Needs attention", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Assigned review/ })).toBeVisible();
+  await expect(page.getByText("1 overdue task", { exact: true })).toBeVisible();
+});
+
+test("board cards drag between status columns", async ({ page }) => {
+  const { calls } = await mockApi(page);
+  await login(page);
+  await page.goto("/engagements/job?view=board");
+  await page
+    .getByRole("region", { name: "To do tasks" })
+    .getByRole("article", { name: "Assigned review", exact: true })
+    .dragTo(page.getByRole("region", { name: "In progress tasks" }));
+  await expect.poll(() => calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "IN_PROGRESS" });
+});
+
+test("list view sorts, edits priority in place and adds a task inline", async ({ page }) => {
+  const { calls } = await mockApi(page);
+  await login(page);
+  await page.goto("/engagements/job?view=list");
+  const row = page.getByRole("row", { name: "Assigned review", exact: true });
+  await row.getByLabel("Priority for Assigned review").selectOption("URGENT");
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ priority: "URGENT" });
+  await page.getByRole("button", { name: "Task", exact: true }).click();
+  await expect(page.getByRole("columnheader", { name: "Task" })).toHaveAttribute("aria-sort", "ascending");
+  await page.getByLabel("Quick add sub-task").fill("Prepare workpapers");
+  await page.getByLabel("Quick add sub-task").press("Enter");
+  const created = calls.filter((call) => call.method === "POST" && call.path.endsWith("/subtasks")).at(-1);
+  expect(created?.body).toMatchObject({ title: "Prepare workpapers", priority: "MEDIUM" });
+});
+
+test("team work page shows tasks, workload, calendar and the review queue", async ({ page }) => {
+  const { engagements, calls } = await mockApi(page);
+  engagements[0].subTasks[0].dueDate = "2020-01-01";
+  await login(page);
+  await page.getByRole("link", { name: "Team work", exact: true }).click();
+  await expect(page).toHaveURL(/\/work$/);
+  await expect(page.getByRole("row", { name: "Assigned review", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Overdue/ }).click();
+  await expect(page).toHaveURL(/quick=overdue/);
+  await expect(page.getByRole("row", { name: "Other staff work", exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Workload" }).click();
+  await expect(page.getByText("Staff One").first()).toBeVisible();
+  await page.getByRole("tab", { name: "Calendar" }).click();
+  await expect(page.getByRole("region", { name: "Overdue" }).getByText("Assigned review")).toBeVisible();
+  engagements[0].subTasks.forEach((task) => {
+    task.templateKey = "DOCUMENT";
+    task.status = "DONE";
+    task.reviewState = "APPROVED";
+  });
+  await page.goto("/work?tab=review");
+  await expect(page.getByRole("region", { name: "Ready for review" })).toBeVisible();
+  await page.getByRole("button", { name: "Send to review" }).click();
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "UNDER_REVIEW" });
+});
+
+test("Ctrl+K opens a search palette that jumps to engagements and tasks", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search" });
+  await dialog.getByRole("combobox").fill("Assigned review");
+  await expect(dialog.getByRole("option", { name: /Assigned review/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/engagements\/job\?task=own$/);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Search (Ctrl K)" }).click();
+  await page.getByRole("combobox").fill("Example");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/engagements\/job$/);
+});
+
+test("task sign-off: auditors approve or send back, and completion waits for approval", async ({ page }) => {
+  const { engagements, calls } = await mockApi(page);
+  const task = engagements[0].subTasks[0];
+  task.status = "DONE";
+  task.progress = 100;
+  task.reviewState = "SUBMITTED";
+  task.submittedBy = staff;
+  task.submittedAt = staff.createdAt;
+  engagements[0].subTasks.forEach((item, index) => {
+    item.templateKey = ["VAT_RECO", "SALES_RECO"][index];
+  });
+  await login(page);
+  await page.goto("/engagements/job");
+  await expect(page.getByRole("button", { name: "Set stage to Complete" })).toBeDisabled();
+  await page.goto("/engagements/job?task=own");
+  const panel = page.getByRole("dialog").getByRole("region", { name: "Sign-off" });
+  await expect(panel.getByText(/Submitted for review by/)).toBeVisible();
+  await panel.getByRole("button", { name: "Request changes" }).click();
+  expect(calls.some((call) => call.path === "/subtasks/own/review")).toBe(false);
+  await panel.getByLabel("Review note").fill("Attach the signed copy");
+  await panel.getByRole("button", { name: "Request changes" }).click();
+  expect(calls.filter((call) => call.path === "/subtasks/own/review").at(-1)?.body).toEqual({
+    decision: "REQUEST_CHANGES",
+    note: "Attach the signed copy",
+  });
+  await expect(panel.getByText("Attach the signed copy")).toBeVisible();
+  task.reviewState = "SUBMITTED";
+  task.status = "DONE";
+  await page.reload();
+  await page.getByRole("dialog").getByRole("button", { name: "Approve" }).click();
+  expect(calls.filter((call) => call.path === "/subtasks/own/review").at(-1)?.body).toMatchObject({
+    decision: "APPROVE",
+  });
+  await expect(page.getByRole("dialog").getByText("Approved", { exact: false }).first()).toBeVisible();
+});
+
+test("review queue lists submitted tasks and approves them in place", async ({ page }) => {
+  const { engagements, calls } = await mockApi(page);
+  engagements[0].subTasks[0].reviewState = "SUBMITTED";
+  engagements[0].subTasks[0].status = "DONE";
+  await login(page);
+  await page.goto("/work?tab=review");
+  const section = page.getByRole("region", { name: "Tasks awaiting review" });
+  await expect(section.getByText("Assigned review")).toBeVisible();
+  await section.getByRole("button", { name: "Approve Assigned review" }).click();
+  expect(calls.filter((call) => call.path === "/subtasks/own/review").at(-1)?.body).toMatchObject({ decision: "APPROVE" });
+});
+
+test("checklist steps and blockers are managed from the task drawer", async ({ page }) => {
+  const { calls } = await mockApi(page);
+  await login(page);
+  await page.goto("/engagements/job?task=own");
+  const drawer = page.getByRole("dialog");
+  await drawer.getByLabel("Add a step").fill("Collect the ledger");
+  await drawer.getByRole("button", { name: "Add", exact: true }).click();
+  expect(calls.filter((call) => call.path === "/subtasks/own/checklist").at(-1)?.body).toEqual({ text: "Collect the ledger" });
+  await drawer.getByRole("checkbox", { name: "Collect the ledger" }).click();
+  await expect(drawer.getByRole("checkbox", { name: "Collect the ledger" })).toBeChecked();
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ done: true });
+  await drawer.getByLabel("Why is this task blocked?").fill("Waiting for the bank letter");
+  await drawer.getByRole("button", { name: "Mark blocked" }).click();
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ blockedReason: "Waiting for the bank letter" });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("article", { name: "Assigned review", exact: true }).getByText("Blocked")).toBeVisible();
+  await expect(page.getByText("Off track").or(page.getByText("At risk")).first()).toBeVisible();
+});
+
+test("document requests are added, received with a note and tracked", async ({ page }) => {
+  const { calls } = await mockApi(page);
+  await login(page);
+  await page.goto("/engagements/job?tab=requests");
+  await page.getByLabel("Requested document").fill("Bank statements");
+  await page.getByRole("button", { name: "Add request" }).click();
+  expect(calls.filter((call) => call.path === "/engagements/job/requests").at(-1)?.body).toMatchObject({ title: "Bank statements" });
+  const item = page.getByRole("listitem", { name: "Bank statements" });
+  await expect(item).toBeVisible();
+  await item.getByRole("checkbox").click();
+  await item.getByLabel("Where is Bank statements kept?").fill("Cabinet A / Folder 3");
+  await item.getByRole("button", { name: "Mark received" }).click();
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "RECEIVED", reference: "Cabinet A / Folder 3" });
+  await expect(page.getByText("1 of 1 received")).toBeVisible();
+  await expect(item.getByText(/Cabinet A \/ Folder 3/)).toBeVisible();
+});
+
+test("copying from a previous year lists that year's engagements and reports the outcome", async ({ page }) => {
+  const { engagements, calls } = await mockApi(page);
+  engagements.push({ ...engagements[0], id: "old", fiscalYearId: "fy82", natureOfWork: "Old audit" });
+  await login(page);
+  await page.goto("/engagements");
+  await page.getByRole("button", { name: "Copy from previous year" }).click();
+  const dialog = page.getByRole("dialog", { name: "Copy from a previous year" });
+  await expect(dialog.getByText("Old audit")).toBeVisible();
+  await dialog.getByRole("checkbox", { name: /Example Client — Old audit/ }).check();
+  await dialog.getByRole("button", { name: /^Copy 1 engagement/ }).click();
+  expect(calls.filter((call) => call.path === "/engagements/clone").at(-1)?.body).toEqual({ sourceIds: ["old"] });
+  await expect(dialog.getByText("Already exists in this fiscal year")).toBeVisible();
+  await expect(dialog.getByRole("link", { name: /Example Client — Old audit/ })).toBeVisible();
+});
+
+test("typing @ suggests people and the mention is posted as plain text", async ({ page }) => {
+  const { calls } = await mockApi(page);
+  await login(page);
+  await page.goto("/engagements/job?tab=activity");
+  const box = page.getByLabel("Your comment");
+  await box.fill("Please look @Sta");
+  await expect(page.getByRole("option", { name: /Staff One/ })).toBeVisible();
+  await box.press("Enter");
+  await expect(box).toHaveValue("Please look @Staff One ");
+  await box.pressSequentially("thanks");
+  await page.getByRole("button", { name: "Post comment" }).click();
+  expect(calls.filter((call) => call.path === "/engagements/job/comments").at(-1)?.body).toEqual({ text: "Please look @Staff One thanks" });
+  await expect(page.getByText("@Staff One", { exact: true })).toBeVisible();
 });

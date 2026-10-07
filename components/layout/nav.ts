@@ -3,6 +3,7 @@ import {
   Building2,
   LayoutDashboard,
   ListChecks,
+  ListTodo,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ export const navItems: NavItem[] = [
     icon: ListChecks,
     roles: ["STAFF"],
   },
+  { href: "/work", label: "Team work", icon: ListTodo, roles: ["AUDITOR"] },
   { href: "/clients", label: "Clients", icon: Building2, roles: ["AUDITOR"] },
   { href: "/staff", label: "Staff", icon: Users, roles: ["AUDITOR"] },
 ];

@@ -172,7 +172,7 @@ export function FiscalYearProvider({ children, renderControls }: { children: Rea
           <DialogHeader>
             <DialogTitle>Open Nepali fiscal year</DialogTitle>
             <DialogDescription>
-              Client profiles can be copied with fresh yearly records. Audit
+              Client profiles and saved IRD details can be copied into fresh yearly records. Audit
               work and its history stay in the original year.
             </DialogDescription>
           </DialogHeader>

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { BriefcaseIcon, PlusIcon } from "lucide-react";
+import { BriefcaseIcon, CopyIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryState } from "@/components/shared/query-state";
 import { canViewEngagement } from "@/lib/permissions";
 import { PageHeader, EmptyState } from "@/components/shared/page-header";
+import { CopyFromYearDialog } from "@/components/engagements/copy-from-year-dialog";
 import { EngagementFormDialog } from "@/components/engagements/engagement-form-dialog";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -17,6 +18,7 @@ export default function EngagementsPage() {
   const { user } = useAuth();
   const engagements = useEngagements();
   const [formOpen, setFormOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
 
   const isAuditor = user?.role === "AUDITOR";
 
@@ -36,10 +38,16 @@ export default function EngagementsPage() {
         }
         actions={
           isAuditor ? (
-            <Button onClick={() => setFormOpen(true)}>
-              <PlusIcon className="size-4" />
-              New engagement
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setCopyOpen(true)}>
+                <CopyIcon className="size-4" />
+                Copy from previous year
+              </Button>
+              <Button onClick={() => setFormOpen(true)}>
+                <PlusIcon className="size-4" />
+                New engagement
+              </Button>
+            </>
           ) : null
         }
       />
@@ -69,7 +77,10 @@ export default function EngagementsPage() {
       </Card>
 
       {isAuditor && (
-        <EngagementFormDialog open={formOpen} onOpenChange={setFormOpen} />
+        <>
+          <EngagementFormDialog open={formOpen} onOpenChange={setFormOpen} />
+          <CopyFromYearDialog open={copyOpen} onOpenChange={setCopyOpen} />
+        </>
       )}
     </div>
   );

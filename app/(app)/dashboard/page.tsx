@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/shared/page-header";
 import { QueryState } from "@/components/shared/query-state";
 import { EngagementStatusBadge } from "@/components/shared/status-badge";
+import { HealthChip } from "@/components/shared/health-chip";
 import { EngagementFormDialog } from "@/components/engagements/engagement-form-dialog";
 import { AddSubTaskAction } from "@/components/engagements/add-subtask-action";
 
@@ -139,7 +140,7 @@ export default function DashboardPage() {
                     {metric.title}
                   </p>
                   <p
-                    className={`text-3xl font-semibold tabular-nums ${metric.title === "Overdue" && metric.value ? "text-amber-700 dark:text-amber-400" : ""}`}
+                    className={`text-3xl font-semibold tabular-nums ${metric.title === "Overdue" && metric.value ? "text-destructive" : ""}`}
                   >
                     {metric.value}
                   </p>
@@ -252,9 +253,12 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="space-y-2 text-right">
-                        <EngagementStatusBadge status={item.status} />
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <EngagementStatusBadge status={item.status} />
+                          <HealthChip engagement={item} />
+                        </div>
                         <p
-                          className={`text-xs ${summary.overdue.some((record) => record.id === item.id) ? "font-medium text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+                          className={`text-xs ${summary.overdue.some((record) => record.id === item.id) ? "font-medium text-destructive" : "text-muted-foreground"}`}
                         >
                           {item.targetDate
                             ? `Target: ${formatDate(item.targetDate.slice(0, 10))}`

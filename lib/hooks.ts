@@ -4,9 +4,13 @@ import { api as baseApi } from "@/lib/api";
 import { useAuth } from "@/components/providers/auth-provider";
 import type {
   ActivityEntry,
+  EngagementDocument,
+  DocumentChallenge,
   Client,
   Comment,
+  DocumentRequest,
   Engagement,
+  Participant,
   NotificationList,
   SubTask,
   SubTaskDetail,
@@ -39,6 +43,45 @@ function invalidateEngagements(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ["subtask-activity"] });
   void queryClient.invalidateQueries({ queryKey: ["engagement-activity"] });
   void queryClient.invalidateQueries({ queryKey: ["my-activity"] });
+}
+
+export function useDocument(id: string, clientProfile = false) {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  const queryClient = useQueryClient();
+  const path = clientProfile ? `/clients/${id}/ird-credentials` : `/subtasks/${id}/document`;
+  const details = useQuery({
+    queryKey: ["document", path, year.id],
+    queryFn: async () => (await api.get<EngagementDocument>(path)).data,
+  });
+  const save = async (payload: Record<string, unknown>) => {
+    const data = (await api.patch<EngagementDocument>(path, payload)).data;
+    queryClient.setQueryData(["document", path, year.id], data);
+    void queryClient.invalidateQueries({ queryKey: ["document"] });
+    invalidateEngagements(queryClient);
+    return data;
+  };
+  // Secrets are deliberately never put into the query/mutation cache.
+  return {
+    details, save,
+    challenge: async () => (await api.post<DocumentChallenge>(`${path}/challenge`, {})).data,
+    reveal: async (token: string, answer: number) => {
+      const result = (await api.post<{ password: string }>(`${path}/reveal`, { token, answer })).data;
+      invalidateEngagements(queryClient);
+      return result;
+    },
+  };
+}
+
+export function useIrdExport() {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  return {
+    challenge: async () => (await api.post<DocumentChallenge>("/clients/ird-credentials/export/challenge", {})).data,
+    download: async (token: string, answer: number) => (await baseApi.post<Blob>("/clients/ird-credentials/export", { token, answer }, {
+      headers: { "X-Fiscal-Year-Id": year.id }, responseType: "blob",
+    })).data,
+  };
 }
 
 export const useClients = () => {
@@ -218,6 +261,148 @@ export const useCreateSubTask = () => {
         )
       ).data,
     onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useReviewSubTask = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      decision,
+      note,
+    }: {
+      id: string;
+      decision: "APPROVE" | "REQUEST_CHANGES";
+      note?: string;
+    }) =>
+      (await api.post<SubTask>(`/subtasks/${id}/review`, { decision, note }))
+        .data,
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useAddChecklistItem = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, text }: { taskId: string; text: string }) =>
+      (await api.post<SubTask>(`/subtasks/${taskId}/checklist`, { text })).data,
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useUpdateChecklistItem = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: { done?: boolean; text?: string };
+    }) => (await api.patch<SubTask>(`/checklist-items/${id}`, payload)).data,
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useRemoveChecklistItem = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => api.delete(`/checklist-items/${id}`),
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useCreateDocumentRequest = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      engagementId,
+      payload,
+    }: {
+      engagementId: string;
+      payload: { title: string; dueDate?: string | null };
+    }) =>
+      (
+        await api.post<DocumentRequest>(
+          `/engagements/${engagementId}/requests`,
+          payload,
+        )
+      ).data,
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useUpdateDocumentRequest = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Record<string, unknown>;
+    }) =>
+      (await api.patch<DocumentRequest>(`/document-requests/${id}`, payload))
+        .data,
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useDeleteDocumentRequest = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => api.delete(`/document-requests/${id}`),
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+export const useParticipants = (engagementId: string) => {
+  const api = useFiscalApi();
+  const year = useFiscalYear();
+  return useQuery({
+    queryKey: ["participants", engagementId, year.id],
+    staleTime: 60_000,
+    queryFn: async () =>
+      (await api.get<Participant[]>(`/engagements/${engagementId}/participants`))
+        .data,
+  });
+};
+
+export type CloneResult = {
+  created: { id: string; clientName: string; natureOfWork: string }[];
+  skipped: { sourceId: string; label: string; reason: string }[];
+};
+
+export const useCloneEngagements = () => {
+  const api = useFiscalApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sourceIds: string[]) =>
+      (await api.post<CloneResult>("/engagements/clone", { sourceIds })).data,
+    onSuccess: () => invalidateEngagements(queryClient),
+  });
+};
+
+/** Engagements of another fiscal year (auditors), used as the source when copying. */
+export const useEngagementsOfYear = (yearId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["engagements-of-year", yearId],
+    enabled: !!yearId && user?.role === "AUDITOR",
+    queryFn: async () =>
+      (
+        await baseApi.get<Engagement[]>("/engagements", {
+          headers: { "X-Fiscal-Year-Id": yearId },
+        })
+      ).data,
   });
 };
 

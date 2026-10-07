@@ -8,6 +8,7 @@ import { Loader2Icon } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { DesktopSidebar } from "@/components/layout/sidebar";
 import { WorkspaceHeader } from "@/components/layout/workspace-header";
+import { CommandPalette } from "@/components/layout/command-palette";
 
 function RedirectToLogin() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <FiscalYearProvider renderControls={(controls) => <WorkspaceHeader controls={controls} />}>
           <main id="main-content" className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <CommandPalette />
             {children}
           </main>
         </FiscalYearProvider>

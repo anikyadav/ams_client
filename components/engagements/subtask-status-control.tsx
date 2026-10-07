@@ -12,15 +12,29 @@ import { SUBTASK_STATUS_OPTIONS } from "@/lib/schemas";
 import { subTaskStatusLabel } from "@/lib/formats";
 import type { SubTask, SubTaskStatus } from "@/lib/types";
 
-export function SubTaskStatusControl({ task }: { task: SubTask }) {
+/**
+ * One status dropdown for everyone allowed to update the task. The `detailed`
+ * variant adds the staff milestone/update form used inside the task drawer.
+ */
+export function SubTaskStatusControl({
+  task,
+  detailed = false,
+  compact = false,
+}: {
+  task: SubTask;
+  detailed?: boolean;
+  compact?: boolean;
+}) {
   const { user } = useAuth();
   const update = useUpdateSubTask();
   if (!user || !canUpdateSubTask(user, task))
     return <SubTaskStatusBadge status={task.status} />;
-  if (user.role === "STAFF") return <SubTaskMilestoneControl task={task} />;
+  if (detailed && user.role === "STAFF")
+    return <SubTaskMilestoneControl task={task} />;
   return (
     <NativeSelect
       aria-label={`Status for ${task.title}`}
+      className={compact ? "h-9 w-auto min-w-32 md:h-8" : undefined}
       value={task.status}
       disabled={update.isPending}
       onChange={async (event) => {

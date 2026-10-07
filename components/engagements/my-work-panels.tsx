@@ -63,7 +63,7 @@ export function CompletedTasks({ tasks }: { tasks: MyTask[] }) {
     <ul className="space-y-2">
       {done.map(({ task, engagement }) => (
         <li key={task.id} className="rounded-lg border bg-card p-3 text-sm">
-          <Link className="font-medium hover:underline" href={`/tasks/${task.id}`}>{task.title}</Link>
+          <Link className="font-medium hover:underline" href={`/engagements/${engagement.id}?task=${task.id}`}>{task.title}</Link>
           <p className="text-muted-foreground">{engagement.client.name} — {engagement.natureOfWork}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {task.completedAt ? `Completed ${formatDateTime(task.completedAt)}` : "Completed"}

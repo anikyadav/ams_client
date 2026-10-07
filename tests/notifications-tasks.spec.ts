@@ -135,20 +135,23 @@ test("notification bell shows unread items, opens the linked task and marks it r
   await expect(bell).toBeVisible();
   await bell.click();
   await page.getByRole("link", { name: /New task assigned/ }).click();
-  await expect(page).toHaveURL(/\/tasks\/open$/);
+  await expect(page).toHaveURL(/\/engagements\/job\?task=open$/);
   await expect(page.getByRole("heading", { name: "Open review" })).toBeVisible();
+  await page.keyboard.press("Escape");
   expect(reads).toEqual(["/notifications/n1/read"]);
   await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeVisible();
 });
 
-test("task page shows details, progress and the task's audit trail", async ({ page }) => {
+test("task drawer shows details and the task's history; old task links redirect to it", async ({ page }) => {
   await mockApi(page, []);
   await signIn(page);
   await page.goto("/tasks/open");
-  await expect(page.getByRole("heading", { name: "Open review" })).toBeVisible();
-  await expect(page.getByText("Collect and tick the bank confirmations.")).toBeVisible();
-  await expect(page.getByText("Audit trail", { exact: true })).toBeVisible();
-  await expect(page.getByText(/status TODO → IN_PROGRESS/)).toBeVisible();
+  await expect(page).toHaveURL(/\/engagements\/job\?task=open$/);
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("heading", { name: "Open review" })).toBeVisible();
+  await expect(drawer.getByText("Collect and tick the bank confirmations.")).toBeVisible();
+  await drawer.getByRole("tab", { name: /Discussion & activity/ }).click();
+  await expect(drawer.getByText(/status Not started → In progress/)).toBeVisible();
 });
 
 test("staff My work separates assigned and completed tasks and shows their activity", async ({ page }) => {
@@ -159,5 +162,5 @@ test("staff My work separates assigned and completed tasks and shows their activ
   await expect(page.getByRole("link", { name: "Finished review" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open review" })).toHaveCount(0);
   await page.getByRole("button", { name: "My activity", exact: true }).click();
-  await expect(page.getByText(/status TODO → IN_PROGRESS/)).toBeVisible();
+  await expect(page.getByText(/status Not started → In progress/)).toBeVisible();
 });

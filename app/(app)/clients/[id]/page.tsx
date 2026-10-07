@@ -16,6 +16,7 @@ import { EngagementFormDialog } from "@/components/engagements/engagement-form-d
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EngagementList } from "@/components/engagements/engagement-list";
+import { ClientIrdDetails } from "@/components/engagements/document-task";
 
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -105,6 +106,7 @@ export default function ClientProfilePage() {
           </p>
         </CardContent>
       </Card>
+      <ClientIrdDetails key={`${profile.id}:${year.id}`} clientId={profile.id} />
       <QueryState
         loading={engagements.isLoading}
         error={engagements.error}

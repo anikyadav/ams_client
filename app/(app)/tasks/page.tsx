@@ -96,19 +96,13 @@ export default function MyWorkPage() {
                     className="flex flex-wrap items-center justify-between gap-3 border-t pt-3"
                   >
                     <Link
-                      className="text-sm hover:underline"
-                      href={`/engagements/${engagement.id}#subtask-${task.id}`}
+                      className="text-sm font-medium hover:text-primary"
+                      href={`/engagements/${engagement.id}?task=${task.id}`}
                     >
                       {task.title}
                     </Link>
-                    <div className="w-full sm:w-72">
-                      <Link
-                        className="mb-2 inline-block text-xs text-primary underline"
-                        href={`/tasks/${task.id}`}
-                      >
-                        Task details &amp; audit trail
-                      </Link>
-                      <SubTaskStatusControl task={task} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <SubTaskStatusControl task={task} compact />
                       <TaskDiscussion engagement={engagement} task={task} />
                     </div>
                   </div>

@@ -28,7 +28,47 @@ export type Client = {
   createdAt: string;
 };
 
+export type ReviewState =
+  | "NOT_SUBMITTED"
+  | "SUBMITTED"
+  | "CHANGES_REQUESTED"
+  | "APPROVED";
+
+export type ChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+  doneAt?: string | null;
+  doneBy?: User | null;
+};
+
+export type DocumentRequest = {
+  id: string;
+  engagementId: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  status: "REQUESTED" | "RECEIVED";
+  reference: string | null;
+  receivedAt: string | null;
+  receivedBy: User | null;
+  createdAt: string;
+};
+
+export type Participant = { id: string; name: string; role: Role };
+
 export type SubTask = {
+  reviewState?: ReviewState;
+  submittedAt?: string | null;
+  submittedBy?: User | null;
+  reviewedAt?: string | null;
+  reviewedBy?: User | null;
+  reviewNote?: string | null;
+  blockedReason?: string | null;
+  blockedAt?: string | null;
+  checklist?: ChecklistItem[];
+  templateKey?: string | null;
+  sortOrder?: number;
   dueDate?: string | null;
   priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   id: string;
@@ -42,6 +82,15 @@ export type SubTask = {
   completedAt?: string | null;
   createdAt: string;
 };
+
+export type EngagementDocument = {
+  registrationNo: string | null;
+  userId: string | null;
+  nextRenewalDate: string | null;
+  hasPassword: boolean;
+};
+
+export type DocumentChallenge = { token: string; question: string; expiresAt: number };
 
 export type Comment = {
   id: string;
@@ -66,6 +115,7 @@ export type Engagement = {
   targetDate: string | null;
   priority: string | null;
   subTasks: SubTask[];
+  documentRequests?: DocumentRequest[];
   comments: Comment[];
   createdAt: string;
   progress: number;

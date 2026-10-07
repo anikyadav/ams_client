@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { CommentThread } from "./comment-thread";
+import { ActivityFeed } from "./activity-feed";
 import type { Engagement, SubTask } from "@/lib/types";
 
 export function TaskDiscussion({ engagement, task }: { engagement: Engagement; task: SubTask }) {
@@ -17,7 +17,7 @@ export function TaskDiscussion({ engagement, task }: { engagement: Engagement; t
           <DialogTitle>{task.title}</DialogTitle>
           <DialogDescription>{engagement.client.name} · {task.progress}% · {task.status === "DONE" ? "Complete" : task.status === "TODO" ? "Not started" : "In progress"}</DialogDescription>
         </DialogHeader>
-        <CommentThread engagement={engagement} taskId={task.id} />
+        <ActivityFeed engagement={engagement} taskId={task.id} />
       </DialogContent>
     </Dialog>
   </>;
