@@ -66,7 +66,7 @@ export function CopyFromYearDialog({
         <DialogHeader>
           <DialogTitle>Copy from a previous year</DialogTitle>
           <DialogDescription>
-            Copies the client, lead, tasks, steps and document requests into {fiscalYearLabel(current)}.
+            Copies the client, lead, sub-tasks, activities and document requests into {fiscalYearLabel(current)}.
             Work is reset to not started and dates move forward by the gap between the two years.
           </DialogDescription>
         </DialogHeader>

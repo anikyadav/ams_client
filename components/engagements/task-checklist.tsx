@@ -18,7 +18,7 @@ import { checklistCount } from "@/lib/task-ui";
 import { cn } from "@/lib/utils";
 import type { SubTask } from "@/lib/types";
 
-/** Steps inside a task. Ticking them moves the task's progress; the last one submits it. */
+/** Activities determine sub-task progress and completion. */
 export function TaskChecklist({ task }: { task: SubTask }) {
   const { user } = useAuth();
   const add = useAddChecklistItem();
@@ -48,20 +48,20 @@ export function TaskChecklist({ task }: { task: SubTask }) {
   }
 
   return (
-    <section aria-label="Checklist" className="space-y-3">
+    <section aria-label="Sub-task activities" className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">Steps</h3>
+        <h3 className="text-sm font-semibold">Activities</h3>
         {total > 0 && (
           <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Progress className="w-24" value={(done / total) * 100} aria-label="Steps completed" />
+            <Progress className="w-24" value={(done / total) * 100} aria-label="Activities completed" />
             {done}/{total}
           </span>
         )}
       </div>
       {total > 0 && (
         <p className="text-xs text-muted-foreground">
-          Ticking steps moves the task forward. Completing the last step submits the task for
-          review.
+          Complete every activity to complete this sub-task. Completing all sub-tasks
+          completes the engagement. Reopening an activity reopens unfinished work.
         </p>
       )}
       <ul className="space-y-1">
@@ -92,7 +92,7 @@ export function TaskChecklist({ task }: { task: SubTask }) {
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label={`Remove step ${item.text}`}
+                aria-label={`Remove activity ${item.text}`}
                 disabled={remove.isPending}
                 onClick={() => void run(() => remove.mutateAsync(item.id))}
               >
@@ -105,8 +105,8 @@ export function TaskChecklist({ task }: { task: SubTask }) {
       {auditor && (
         <form onSubmit={submit} className="flex gap-2">
           <Input
-            aria-label="Add a step"
-            placeholder="Add a step and press Enter"
+            aria-label="Add an activity"
+            placeholder="Add an activity and press Enter"
             maxLength={300}
             value={text}
             disabled={add.isPending}

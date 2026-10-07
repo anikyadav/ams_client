@@ -28,12 +28,12 @@ export function TaskBadges({ task }: { task: SubTask }) {
       )}
       {steps.total > 0 && (
         <span
-          title={`${steps.done} of ${steps.total} steps done`}
+          title={`${steps.done} of ${steps.total} activities complete`}
           className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
         >
           <ListChecks className="size-3" aria-hidden="true" />
           {steps.done}/{steps.total}
-          <span className="sr-only"> steps done</span>
+          <span className="sr-only"> activities complete</span>
         </span>
       )}
     </span>

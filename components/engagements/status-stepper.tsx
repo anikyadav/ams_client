@@ -20,10 +20,11 @@ export function StatusStepper({
 }) {
   const update = useUpdateEngagement();
   const current = stages.indexOf(engagement.status);
-  // Completing an engagement needs every compulsory task signed off (the server enforces it too).
+  // Delivery needs every compulsory task signed off (the server enforces it too).
   const unsigned = engagement.subTasks.filter(
     (task) => isRequiredTask(task) && task.reviewState !== "APPROVED",
   ).length;
+  const incomplete = engagement.subTasks.some((task) => task.status !== "DONE");
   return (
     <ol aria-label="Engagement stage" className="flex flex-wrap items-center gap-x-1 gap-y-2">
       {stages.map((stage, index) => {
@@ -45,10 +46,8 @@ export function StatusStepper({
             {engagementStatusLabel[stage]}
           </>
         );
-        const gated =
-          (stage === "COMPLETE" || stage === "DELIVERED") &&
-          current < stages.indexOf("COMPLETE") &&
-          unsigned > 0;
+        const automatic = engagement.subTasks.length > 0 && ["NOT_STARTED", "IN_PROGRESS", "COMPLETE"].includes(stage);
+        const gated = stage === "DELIVERED" && (unsigned > 0 || incomplete);
         const cls = cn(
           "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium",
           active ? "text-foreground" : "text-muted-foreground",
@@ -58,11 +57,15 @@ export function StatusStepper({
             {editable ? (
               <button
                 type="button"
-                disabled={update.isPending || active || gated}
+                disabled={update.isPending || active || gated || automatic}
                 title={
-                  gated
-                    ? `${unsigned} compulsory ${unsigned === 1 ? "task needs" : "tasks need"} approval first`
-                    : undefined
+                  automatic
+                    ? "This stage follows sub-task completion automatically"
+                    : gated
+                      ? incomplete
+                        ? "Complete every sub-task before delivery"
+                        : `${unsigned} compulsory ${unsigned === 1 ? "task needs" : "tasks need"} approval first`
+                      : undefined
                 }
                 aria-label={`Set stage to ${engagementStatusLabel[stage]}`}
                 className={cn(cls, "transition-colors hover:bg-muted disabled:hover:bg-transparent")}

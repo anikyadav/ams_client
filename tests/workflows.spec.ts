@@ -1269,8 +1269,9 @@ test("engagement shows health, a stage stepper and an overview tab", async ({ pa
   await login(page);
   await page.goto("/engagements/job");
   await expect(page.getByText("Off track").first()).toBeVisible();
-  await page.getByRole("button", { name: "Set stage to In progress" }).click();
-  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "IN_PROGRESS" });
+  await expect(page.getByRole("button", { name: "Set stage to In progress" })).toBeDisabled();
+  await page.getByRole("button", { name: "Set stage to Under review" }).click();
+  expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ status: "UNDER_REVIEW" });
   await page.getByRole("tab", { name: "Overview" }).click();
   await expect(page).toHaveURL(/tab=overview/);
   await expect(page.getByText("Needs attention", { exact: true })).toBeVisible();
@@ -1345,7 +1346,7 @@ test("Ctrl+K opens a search palette that jumps to engagements and tasks", async 
   await expect(page).toHaveURL(/\/engagements\/job$/);
 });
 
-test("task sign-off: auditors approve or send back, and completion waits for approval", async ({ page }) => {
+test("task sign-off: auditors approve or send back, and delivery waits for completion and approval", async ({ page }) => {
   const { engagements, calls } = await mockApi(page);
   const task = engagements[0].subTasks[0];
   task.status = "DONE";
@@ -1359,6 +1360,8 @@ test("task sign-off: auditors approve or send back, and completion waits for app
   await login(page);
   await page.goto("/engagements/job");
   await expect(page.getByRole("button", { name: "Set stage to Complete" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Set stage to Delivered" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Set stage to Delivered" })).toHaveAttribute("title", "Complete every sub-task before delivery");
   await page.goto("/engagements/job?task=own");
   const panel = page.getByRole("dialog").getByRole("region", { name: "Sign-off" });
   await expect(panel.getByText(/Submitted for review by/)).toBeVisible();
@@ -1393,14 +1396,18 @@ test("review queue lists submitted tasks and approves them in place", async ({ p
   expect(calls.filter((call) => call.path === "/subtasks/own/review").at(-1)?.body).toMatchObject({ decision: "APPROVE" });
 });
 
-test("checklist steps and blockers are managed from the task drawer", async ({ page }) => {
+test("sub-task activities and blockers are managed from the task drawer", async ({ page }) => {
   const { calls } = await mockApi(page);
   await login(page);
   await page.goto("/engagements/job?task=own");
   const drawer = page.getByRole("dialog");
-  await drawer.getByLabel("Add a step").fill("Collect the ledger");
+  await drawer.getByLabel("Add an activity").fill("Collect the ledger");
   await drawer.getByRole("button", { name: "Add", exact: true }).click();
   expect(calls.filter((call) => call.path === "/subtasks/own/checklist").at(-1)?.body).toEqual({ text: "Collect the ledger" });
+  await expect(drawer.getByRole("heading", { name: "Activities", exact: true })).toBeVisible();
+  await expect(drawer.getByLabel("Status for Assigned review")).toHaveCount(0);
+  await expect(drawer.getByText("Progress follows completed activities. Complete every activity to finish this sub-task.")).toBeVisible();
+  await page.screenshot({ path: "test-results/subtask-activities.png", fullPage: true });
   await drawer.getByRole("checkbox", { name: "Collect the ledger" }).click();
   await expect(drawer.getByRole("checkbox", { name: "Collect the ledger" })).toBeChecked();
   expect(calls.filter((call) => call.method === "PATCH").at(-1)?.body).toEqual({ done: true });

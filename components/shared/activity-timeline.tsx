@@ -18,6 +18,8 @@ import { formatDateTime } from "@/lib/formats";
 import type { ActivityEntry } from "@/lib/types";
 
 const ACTION_STYLE: Record<string, { icon: LucideIcon; label: string; tone: string }> = {
+  ENGAGEMENT_COMPLETED: { icon: CircleCheckBigIcon, label: "Engagement completed", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
+  ENGAGEMENT_REOPENED: { icon: RotateCcwIcon, label: "Engagement reopened", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
   DOCUMENT_UPDATED: { icon: PencilIcon, label: "Document updated", tone: "bg-primary/10 text-primary" },
   DOCUMENT_PASSWORD_REVEALED: { icon: PencilIcon, label: "Password accessed", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
   SUBTASK_CREATED: { icon: CirclePlusIcon, label: "Created", tone: "bg-primary/10 text-primary" },
@@ -42,7 +44,7 @@ const ACTION_STYLE: Record<string, { icon: LucideIcon; label: string; tone: stri
     label: "Changes requested",
     tone: "bg-rose-500/15 text-rose-700 dark:text-rose-400",
   },
-  SUBTASK_CHECKLIST: { icon: ListChecksIcon, label: "Checklist", tone: "bg-primary/10 text-primary" },
+  SUBTASK_CHECKLIST: { icon: ListChecksIcon, label: "Activity", tone: "bg-primary/10 text-primary" },
   REQUEST_ADDED: { icon: FileCheck2Icon, label: "Document requested", tone: "bg-muted text-muted-foreground" },
   REQUEST_RECEIVED: {
     icon: FileCheck2Icon,

@@ -188,7 +188,7 @@ export function ProjectTasks({
   }
 
   function taskRow(task: SubTask, card = false) {
-    const movable = card && !!user && canUpdateSubTask(user, task);
+    const movable = card && !!user && canUpdateSubTask(user, task) && !task.checklist?.length;
     const comments = engagement.comments.filter(
       (comment) => comment.subTaskId === task.id,
     ).length;

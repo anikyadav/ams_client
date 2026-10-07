@@ -27,6 +27,13 @@ export function SubTaskStatusControl({
 }) {
   const { user } = useAuth();
   const update = useUpdateSubTask();
+  if (task.checklist?.length)
+    return (
+      <div className="space-y-1">
+        <SubTaskStatusBadge status={task.status} />
+        {detailed && <p className="text-xs text-muted-foreground">Progress follows completed activities. Complete every activity to finish this sub-task.</p>}
+      </div>
+    );
   if (!user || !canUpdateSubTask(user, task))
     return <SubTaskStatusBadge status={task.status} />;
   if (detailed && user.role === "STAFF")

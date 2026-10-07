@@ -14,6 +14,8 @@ export function EngagementProgressControl({ engagement }: { engagement: Engageme
   const update = useUpdateEngagementProgress();
   const [progress, setProgress] = useState<number | null>(null);
   const [comment, setComment] = useState("");
+  if (engagement.subTasks.length)
+    return <p className="text-sm text-muted-foreground">Progress: {engagement.progress}%. Completing all sub-tasks automatically completes this engagement.</p>;
   if (!user || (user.role !== "AUDITOR" && engagement.staffId !== user.id)) return null;
   if (engagement.status === "DELIVERED") return <p className="text-sm text-muted-foreground">Delivered. Ask your auditor to reopen this engagement for further updates.</p>;
   const selected = progress ?? engagement.progress;
