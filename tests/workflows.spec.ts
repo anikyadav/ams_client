@@ -1246,6 +1246,23 @@ test("quick filters live in the URL, and a task opens straight from ?task= with 
   await expect(page).not.toHaveURL(/task=/);
 });
 
+test("assignee filtering permits engagement tab navigation and keeps the filter", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.goto("/engagements/job");
+  await page.getByLabel("Filter sub-task assignee").selectOption("staff");
+  for (const name of ["Overview", "Requests", "Discussion & activity"]) {
+    const tab = page.getByRole("tab", { name: new RegExp(`^${name}`) });
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await expect(page).toHaveURL(/assignee=staff/);
+  }
+  await page.getByRole("tab", { name: "Tasks" }).click();
+  await expect(page.getByLabel("Filter sub-task assignee")).toHaveValue("staff");
+  await expect(page.getByRole("article", { name: "Assigned review", exact: true })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Other staff work", exact: true })).toHaveCount(0);
+});
+
 test("engagement shows health, a stage stepper and an overview tab", async ({ page }) => {
   const { engagements, calls } = await mockApi(page);
   engagements[0].subTasks[0].dueDate = "2020-01-01";

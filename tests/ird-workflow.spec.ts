@@ -267,3 +267,64 @@ test("staff can access their Document task but cannot see the fiscal-year export
     page.getByRole("button", { name: "Export IRD credentials" }),
   ).toHaveCount(0);
 });
+
+test("client IRD form refreshes details saved from a task before resaving", async ({ page }) => {
+  const patches = await mock(page);
+  await page.getByRole("link", { name: "Clients", exact: true }).click();
+  await page.getByRole("link", { name: "Test Client", exact: true }).click();
+  await expect(page.getByLabel("1.1 Registration No.")).toHaveValue("000123");
+  await page.getByRole("link", { name: "Annual audit", exact: true }).click();
+  await page.getByRole("button", { name: "1. Document", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByLabel("1.1 Registration No.").fill("NEW-REGISTRATION");
+  await drawer.getByLabel("1.2 IRD user ID").fill("NEW-USER");
+  await drawer.getByRole("button", { name: "Save IRD details", exact: true }).click();
+  await expect.poll(() => patches.length).toBe(1);
+  await drawer.getByRole("button", { name: "Close", exact: true }).click();
+  const refreshed = page.waitForResponse((response) =>
+    response.url().endsWith("/clients/client/ird-credentials") &&
+    response.request().method() === "GET",
+  );
+  await page.getByRole("link", { name: "Test Client", exact: true }).click();
+  await refreshed;
+  await expect(page.getByLabel("1.1 Registration No.")).toHaveValue("NEW-REGISTRATION");
+  await expect(page.getByLabel("1.2 IRD user ID")).toHaveValue("NEW-USER");
+  await page.getByRole("button", { name: "Save IRD details", exact: true }).click();
+  await expect.poll(() => patches.length).toBe(2);
+  expect(patches[1]).toMatchObject({ registrationNo: "NEW-REGISTRATION", userId: "NEW-USER" });
+});
+
+test("IRD refresh preserves unsaved edits and refreshes untouched fields", async ({ page }) => {
+  await page.clock.install();
+  const patches = await mock(page);
+  await page.goto("/clients/client");
+  await expect(page.getByLabel("1.1 Registration No.")).toHaveValue("000123");
+  await page.getByLabel("1.1 Registration No.").fill("LOCAL-EDIT");
+  await page.getByLabel("1.3 Replace IRD password").fill("unsaved-password");
+  let registrationNo = "REMOTE-EDIT";
+  await page.route("http://localhost:5000/clients/client/ird-credentials", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    return route.fulfill({ json: {
+      registrationNo, userId: "REMOTE-USER", hasPassword: true, nextRenewalDate: null,
+    } });
+  });
+  const refresh = async () => {
+    await page.clock.fastForward(30_001);
+    const response = page.waitForResponse((item) =>
+      item.url().endsWith("/clients/client/ird-credentials") && item.request().method() === "GET",
+    );
+    await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+    await response;
+  };
+  await refresh();
+  await expect(page.getByLabel("1.1 Registration No.")).toHaveValue("LOCAL-EDIT");
+  await expect(page.getByLabel("1.2 IRD user ID")).toHaveValue("REMOTE-USER");
+  await expect(page.getByLabel("1.3 Replace IRD password")).toHaveValue("unsaved-password");
+  registrationNo = "LOCAL-EDIT";
+  await page.getByRole("button", { name: "Save IRD details", exact: true }).click();
+  await expect(page.getByLabel("1.3 Replace IRD password")).toHaveValue("");
+  expect(patches[0]).toMatchObject({ registrationNo: "LOCAL-EDIT", userId: "REMOTE-USER", password: "unsaved-password" });
+  registrationNo = "AFTER-SAVE";
+  await refresh();
+  await expect(page.getByLabel("1.1 Registration No.")).toHaveValue("AFTER-SAVE");
+});

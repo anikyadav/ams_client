@@ -64,9 +64,9 @@ export default function EngagementDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteTask, setDeleteTask] = useState<string | null>(null);
   const requested = url.get("tab");
-  // A linked task or filter always lives on the Tasks tab.
+  // A linked task opens the Tasks tab; filters must not override tab navigation.
   const tab =
-    url.get("task") || url.get("assignee")
+    url.get("task")
       ? "tasks"
       : ["overview", "activity", "requests"].includes(requested)
         ? requested

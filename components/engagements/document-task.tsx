@@ -68,13 +68,14 @@ function DocumentForm({
   clientProfile: boolean;
 }) {
   const prefix = useId();
-  const [registrationNo, setRegistrationNo] = useState(
-    initial.registrationNo ?? "",
-  );
-  const [userId, setUserId] = useState(initial.userId ?? "");
-  const [renewal, setRenewal] = useState(
-    initial.nextRenewalDate ? adToBs(initial.nextRenewalDate.slice(0, 10)) : "",
-  );
+  // Untouched fields follow refreshed data; local edits survive a refetch.
+  const [registrationNoDraft, setRegistrationNo] = useState<string | null>(null);
+  const [userIdDraft, setUserId] = useState<string | null>(null);
+  const [renewalDraft, setRenewal] = useState<string | null>(null);
+  const registrationNo = registrationNoDraft ?? initial.registrationNo ?? "";
+  const userId = userIdDraft ?? initial.userId ?? "";
+  const renewal = renewalDraft ??
+    (initial.nextRenewalDate ? adToBs(initial.nextRenewalDate.slice(0, 10)) : "");
   const [password, setPassword] = useState("");
   const [clearPassword, setClearPassword] = useState(false);
   const [challenge, setChallenge] = useState<DocumentChallenge | null>(null);
@@ -111,6 +112,9 @@ function DocumentForm({
         nextRenewalDate: renewal ? bsToAd(renewal) : null,
         ...(clearPassword ? { password: null } : password ? { password } : {}),
       });
+      setRegistrationNo(null);
+      setUserId(null);
+      setRenewal(null);
       setPassword("");
       setClearPassword(false);
       toast.success("Client IRD details saved");
